@@ -50,13 +50,7 @@ export const disruptionScenarios = [
   },
 ];
 
-const scenarioIcons: Record<string, React.ReactNode> = {
-  flight_delay: <Clock size={15} />,
-  train_delay: <Train size={15} />,
-  cab_cancel: <Ban size={15} />,
-  weather: <CloudRain size={15} />,
-  member_sick: <User size={15} />,
-};
+// Icons are included directly in the scenario objects now.
 
 const processingSteps = [
   'Detecting disruption…',
@@ -95,6 +89,49 @@ interface DisruptionSimulatorProps {
 }
 
 export function DisruptionSimulator({ tripId, nodes = [], onDisrupt, isDisrupted }: DisruptionSimulatorProps) {
+  const dynamicScenarios = nodes.length > 0 ? nodes.slice(0, 4).map(node => {
+    let delayMinutes = 120;
+    let label = `${node.label} Delayed`;
+    let description = `Delayed by ${delayMinutes}m, impacting downstream connections.`;
+    let icon = <Clock size={16} />;
+    let source = 'flight_provider';
+
+    if (node.type === 'cab') {
+      delayMinutes = 90;
+      label = `${node.label} Cancelled`;
+      description = `Driver cancelled at the last minute.`;
+      icon = <Ban size={16} />;
+      source = 'user_reported';
+    } else if (node.type === 'hotel') {
+      delayMinutes = 180;
+      label = `${node.label} Issue`;
+      description = `Check-in delayed due to room unavailability.`;
+      icon = <Clock size={16} />;
+      source = 'user_reported';
+    } else if (node.type === 'train') {
+      delayMinutes = 240;
+      source = 'train_unofficial';
+      icon = <Train size={16} />;
+    } else if (node.type === 'phantom') {
+      label = `Traffic for ${node.label}`;
+      description = `Unexpected delays on this route.`;
+      delayMinutes = 60;
+      source = 'road_eta';
+      icon = <Car size={16} />;
+    }
+    
+    return {
+      id: `delay_${node.id}`,
+      label,
+      description,
+      icon,
+      type: node.type,
+      delayMinutes,
+      source,
+      nodeId: node.id
+    };
+  }) : disruptionScenarios;
+
   const [selected, setSelected] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [step, setStep] = useState(0);
@@ -105,7 +142,7 @@ export function DisruptionSimulator({ tripId, nodes = [], onDisrupt, isDisrupted
   const handleSimulate = async () => {
     if (!selected || processing) return;
 
-    const scenario = disruptionScenarios.find((s) => s.id === selected);
+    const scenario = dynamicScenarios.find((s) => s.id === selected);
     if (!scenario) return;
 
     setProcessing(true);
@@ -124,8 +161,8 @@ export function DisruptionSimulator({ tripId, nodes = [], onDisrupt, isDisrupted
     animateTick(0);
 
     try {
-      // Find the first node matching the scenario's type, or fall back to the first node
-      const targetNode = nodes.find((n) => n.type === scenario.type) ?? nodes[0];
+      // Find the specific node or first matching type
+      const targetNode = nodes.find((n) => n.id === (scenario as any).nodeId) ?? nodes.find((n) => n.type === scenario.type) ?? nodes[0];
 
       let cascadeResult: DisruptionResult | undefined;
 
@@ -175,7 +212,7 @@ export function DisruptionSimulator({ tripId, nodes = [], onDisrupt, isDisrupted
       </div>
 
       <div className="grid grid-cols-2 gap-2 mb-4">
-        {disruptionScenarios.map((scenario) => (
+        {dynamicScenarios.map((scenario) => (
           <button
             key={scenario.id}
             onClick={() => setSelected(scenario.id)}
@@ -188,7 +225,7 @@ export function DisruptionSimulator({ tripId, nodes = [], onDisrupt, isDisrupted
             }}
           >
             <span style={{ color: selected === scenario.id ? '#D93829' : '#5F665B' }}>
-              {scenarioIcons[scenario.id]}
+              {scenario.icon}
             </span>
             <span className="text-xs leading-tight">{scenario.label}</span>
           </button>

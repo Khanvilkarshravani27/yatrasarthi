@@ -7,6 +7,7 @@ import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, Cart
 interface RecoveryOptionData {
   optionId: string;
   name: string;
+  explanation?: string;
   netCost: number;
   possibleCompensation?: number;
   arrivalTime: string;
@@ -24,6 +25,8 @@ interface RecoveryOptionsProps {
   options?: RecoveryOptionData[];
   /** Map of nodeId → label for resolving dropped node ids to human-readable names */
   nodeLabels?: Record<string, string>;
+  /** Specific node to generate recovery options for (used in What If simulations where trip is not broken) */
+  brokenNodeId?: string;
   /** Called when "Propose to group" is clicked; receives the new actionId */
   onProposed?: (actionId: string) => void;
 }
@@ -40,6 +43,7 @@ export function RecoveryOptionsPanel({
   tripId,
   options: initialOptions,
   nodeLabels = {},
+  brokenNodeId,
   onProposed,
 }: RecoveryOptionsProps) {
   const [options, setOptions] = useState<RecoveryOptionData[]>(initialOptions ?? []);
@@ -55,7 +59,11 @@ export function RecoveryOptionsPanel({
     setError(null);
     try {
       // Pass ?mode= query param per api_contract.md §6
-      const res = await fetch(`/api/trips/${tripId}/recovery-options?mode=${rankingMode}`);
+      const url = new URL(`/api/trips/${tripId}/recovery-options`, window.location.origin);
+      url.searchParams.set('mode', rankingMode);
+      if (brokenNodeId) url.searchParams.set('brokenNodeId', brokenNodeId);
+      
+      const res = await fetch(url.toString());
       const data = await res.json();
       // Support both { data: { options } } (contract) and legacy { recoveryOptions }
       const opts = data?.data?.options ?? data?.recoveryOptions ?? [];
@@ -83,10 +91,37 @@ export function RecoveryOptionsPanel({
       });
       const data = await res.json();
       const actionId = data?.data?.action?.id ?? data?.data?.id ?? data?.action?.id ?? optionId;
+
+      const option = options.find((o) => o.optionId === optionId);
+      if (option) {
+        // If the option adds a phantom node, we need to provide newPhantomNode payload
+        const addsPhantom = option.changes.some((c) => c.nodeId === 'phantom_new');
+        
+        await fetch('/api/itinerary/apply-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tripId,
+            actionId,
+            optionId,
+            changes: option.changes,
+            newPhantomNode: addsPhantom ? {
+              label: 'Alternate Transit (Auto-generated)',
+              type: 'phantom',
+              time: new Date(Date.now() + 30 * 60000).toISOString(),
+              fromNodeId: brokenNodeId || Object.keys(nodeLabels)[0], 
+            } : undefined
+          }),
+        });
+      }
+
       setProposed(optionId);
       onProposed?.(actionId);
+      
+      // Auto-scroll to the updated graph at the top of the page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch {
-      setError('Failed to propose this option. Please try again.');
+      setError('Failed to update itinerary. Please try again.');
     } finally {
       setProposing(null);
     }
@@ -185,6 +220,7 @@ export function RecoveryOptionsPanel({
               key={option.optionId}
               option={option}
               rank={i}
+              mode={mode}
               nodeLabels={nodeLabels}
               isProposed={proposed === option.optionId}
               isProposing={proposing === option.optionId}
@@ -227,6 +263,7 @@ export function RecoveryOptionsPanel({
 function OptionCard({
   option,
   rank,
+  mode,
   nodeLabels,
   isProposed,
   isProposing,
@@ -234,6 +271,7 @@ function OptionCard({
 }: {
   option: RecoveryOptionData;
   rank: number;
+  mode: RankingMode;
   nodeLabels: Record<string, string>;
   isProposed: boolean;
   isProposing: boolean;
@@ -261,13 +299,24 @@ function OptionCard({
         boxShadow: option.recommended ? '0 0 0 2px #C5D82D33' : undefined,
       }}
     >
-      {option.recommended && (
-        <div className="text-xs font-bold px-2 py-1 rounded-full inline-block self-start" style={{ background: '#C5D82D', color: '#172017' }}>
-          ⭐ Recommended
+      <div className="flex justify-between items-start">
+        {option.recommended ? (
+          <div className="text-xs font-bold px-2 py-1 rounded-full inline-block" style={{ background: '#C5D82D', color: '#172017' }}>
+            ⭐ Recommended
+          </div>
+        ) : <div />}
+        <div className="text-[10px] font-extrabold uppercase px-2 py-1 rounded-md" style={{ background: '#EDE9D8', color: '#5F665B' }}>
+          {mode === 'cheapest' ? 'Cost Score: ' : mode === 'fastest' ? 'Time Score: ' : 'Itinerary Score: '}
+          {Math.round((mode === 'cheapest' ? option.scoreBreakdown.costNorm : mode === 'fastest' ? option.scoreBreakdown.timeNorm : option.scoreBreakdown.nodesNorm) * 100)}
         </div>
-      )}
+      </div>
 
-      <div className="font-bold text-sm" style={{ color: colors[rank] ?? '#172017' }}>{option.name}</div>
+      <div>
+        <div className="font-bold text-sm" style={{ color: colors[rank] ?? '#172017' }}>{option.name}</div>
+        {option.explanation && (
+          <div className="text-xs mt-1 leading-relaxed" style={{ color: '#5F665B' }}>{option.explanation}</div>
+        )}
+      </div>
 
       {/* Cost */}
       <div>
@@ -321,7 +370,7 @@ function OptionCard({
       {/* CTA */}
       {isProposed ? (
         <div className="py-2 rounded-xl text-xs font-semibold text-center" style={{ background: '#DCE8D2', color: '#172017' }}>
-          ✓ Proposed to group
+          ✓ Itinerary Updated
         </div>
       ) : (
         <button
@@ -331,7 +380,7 @@ function OptionCard({
           style={{ background: '#172017', color: '#F5F2E8', opacity: isProposing ? 0.7 : 1 }}
         >
           {isProposing ? <Loader2 size={14} className="animate-spin" /> : null}
-          {isProposing ? 'Proposing…' : 'Propose to group'}
+          {isProposing ? 'Updating…' : 'Update Itinerary'}
         </button>
       )}
     </div>

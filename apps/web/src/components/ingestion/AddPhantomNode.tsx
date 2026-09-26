@@ -12,6 +12,13 @@ const MODES: { value: PhantomMode; label: string; icon: React.ReactNode; color: 
   { value: 'other', label: 'Other', icon: <MapPin size={24} />, color: '#64748B' },
 ];
 
+function formatMinutes(mins: number) {
+  if (mins < 60) return `${mins} min`;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h`;
+}
+
 interface AddPhantomNodeProps {
   tripId: string;
   onAdded: () => void;
@@ -158,7 +165,7 @@ export default function AddPhantomNode({ tripId, onAdded, onBack }: AddPhantomNo
               </span>
             </div>
             {!estimating && estimatedMin !== null && (
-              <span className="text-xl font-extrabold text-[#172017]">{estimatedMin} <span className="text-sm font-bold text-[#4E8752]">min</span></span>
+              <span className="text-xl font-extrabold text-[#172017]">{formatMinutes(estimatedMin)}</span>
             )}
           </div>
         )}
@@ -198,7 +205,7 @@ export default function AddPhantomNode({ tripId, onAdded, onBack }: AddPhantomNo
         {estimatedMin !== null && (
           <div className="mt-6 pt-5 border-t border-[#E2E8F0] flex justify-between items-center">
             <span className="text-sm font-bold text-[#64748B] uppercase tracking-widest">Total Journey Time</span>
-            <span className="text-2xl font-black text-[#172017] bg-[#DCE8D2] px-4 py-1.5 rounded-xl">{totalMin} <span className="text-sm">min</span></span>
+            <span className="text-2xl font-black text-[#172017] bg-[#DCE8D2] px-4 py-1.5 rounded-xl">{formatMinutes(totalMin)}</span>
           </div>
         )}
       </div>

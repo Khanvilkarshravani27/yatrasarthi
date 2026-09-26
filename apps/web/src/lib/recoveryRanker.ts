@@ -105,6 +105,7 @@ function dedupKey(nodesDropped: string[]): string {
 
 export interface ExtendedRecoveryOption extends RecoveryOption {
   label: 'skip_reschedule' | 'rebook' | 'alternate_transit' | 'wait_monitor' | 'partial_reroute';
+  explanation?: string;
   dgca: DGCAResult;
   sortKey: { cost: number; timePenaltyMin: number; bookingsPreserved: number };
 }
@@ -131,6 +132,7 @@ export function generateRecoveryOptions(
       optionId: 'opt_wait',
       name: 'Wait & Monitor',
       label: 'wait_monitor',
+      explanation: 'No active disruption found. Monitoring trip status.',
       netCost: 0,
       possibleCompensation: 0,
       arrivalTime: arrivalTimeFromDelay(nodes[nodes.length - 1]?.time, 0),
@@ -190,8 +192,13 @@ export function generateRecoveryOptions(
 
     candidates.push({
       optionId: 'opt_skip',
-      name: 'Skip & Reschedule',
+      name: softDropped.length > 0 
+        ? `Cancel ${softDropped[0]?.label || 'affected leg'} & preserve rest` 
+        : 'Skip & Reschedule',
       label: 'skip_reschedule',
+      explanation: softDropped.length > 0
+        ? `Drops ${softDropped.length} downstream bookings to recover the timeline and avoid hard failures.`
+        : 'Skips the affected leg and reschedules remaining itinerary.',
       netCost: cancelCost,
       possibleCompensation: dgca.eligible ? dgca.amountPaise : 0,
       arrivalTime: arrivalTimeFromDelay(lastNode?.time, delayMin),
@@ -221,8 +228,9 @@ export function generateRecoveryOptions(
 
     candidates.push({
       optionId: 'opt_rebook',
-      name: `Rebook ${brokenNode.label || brokenNode.type}`,
+      name: `Rebook ${brokenNode.type}: Secure alternative to ${brokenNode.label || 'leg'}`,
       label: 'rebook',
+      explanation: `Replaces the disrupted booking with an alternative vendor to preserve the full itinerary.`,
       netCost: rebookCostPaise,
       possibleCompensation: dgca.eligible ? dgca.amountPaise : 0,
       arrivalTime: arrivalTimeFromDelay(lastNode?.time, delayMin - timeSaved),
@@ -250,8 +258,11 @@ export function generateRecoveryOptions(
 
     candidates.push({
       optionId: 'opt_phantom',
-      name: 'Add Alternate Transit',
+      name: unaffectedNodes.length > 0
+        ? `Backup transit to preserve ${unaffectedNodes[0]?.label || 'next stop'}`
+        : 'Add Emergency Transit',
       label: 'alternate_transit',
+      explanation: `Inserts a backup transportation leg to bypass the delay and reach the next critical stop.`,
       netCost: phantomCostPaise,
       possibleCompensation: 0,
       arrivalTime: arrivalTimeFromDelay(lastNode?.time, delayMin + 30),
@@ -276,8 +287,9 @@ export function generateRecoveryOptions(
   {
     candidates.push({
       optionId: 'opt_wait',
-      name: 'Wait & Monitor',
+      name: `Wait & Monitor ${brokenNode.label || 'ETA'} updates`,
       label: 'wait_monitor',
+      explanation: `Makes no immediate changes. Monitors the delay to see if downstream buffers can absorb it.`,
       netCost: 0,
       possibleCompensation: dgca.eligible ? dgca.amountPaise : 0,
       arrivalTime: arrivalTimeFromDelay(lastNode?.time, delayMin),
@@ -315,8 +327,9 @@ export function generateRecoveryOptions(
 
     const broadened: Candidate = {
       optionId: 'opt_partial_reroute',
-      name: 'Partial Reroute',
+      name: `Salvage itinerary: Drop ${partialDropped.length} booking${partialDropped.length > 1 ? 's' : ''}`,
       label: 'partial_reroute',
+      explanation: `Cancels ${partialDropped.length} upstream bookings to salvage the remainder of the trip.`,
       netCost: partialCost,
       possibleCompensation: dgca.eligible ? Math.floor(dgca.amountPaise / 2) : 0,
       arrivalTime: arrivalTimeFromDelay(lastNode?.time, Math.floor(delayMin * 0.6)),

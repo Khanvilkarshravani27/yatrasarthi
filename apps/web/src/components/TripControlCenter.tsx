@@ -357,22 +357,22 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
 
         {/* JOURNEY */}
         {activeTab === 'journey' && (
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            <div className="lg:col-span-2">
+          <div className="flex flex-col gap-6">
+            <div className="card p-5 w-full bg-white border" style={{ borderColor: '#D5D9CC', minHeight: 360 }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-base" style={{ color: '#172017' }}>Dependency Graph</h3>
+                <span className="text-xs" style={{ color: '#5F665B' }}>Hover nodes for details</span>
+              </div>
+              <DependencyGraph nodes={trip.nodes} edges={trip.edges} animating={isDisrupted} tripId={trip.id} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="card p-5 bg-white border" style={{ borderColor: '#D5D9CC' }}>
                 <h3 className="font-bold text-base mb-5" style={{ color: '#172017' }}>Journey Timeline</h3>
                 <TripTimeline nodes={trip.nodes} isDisrupted={isDisrupted} />
               </div>
-            </div>
-            <div className="lg:col-span-3 flex flex-col gap-5">
-              <div className="card p-5 flex-1 bg-white border" style={{ borderColor: '#D5D9CC', minHeight: 360 }}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-base" style={{ color: '#172017' }}>Dependency Graph</h3>
-                  <span className="text-xs" style={{ color: '#5F665B' }}>Hover nodes for details</span>
-                </div>
-                <DependencyGraph nodes={trip.nodes} edges={trip.edges} animating={isDisrupted} tripId={trip.id} />
+              <div>
+                <DisruptionSimulator tripId={trip.id} nodes={trip.nodes} onDisrupt={onDisrupt} isDisrupted={isDisrupted} />
               </div>
-              <DisruptionSimulator tripId={trip.id} onDisrupt={onDisrupt} isDisrupted={isDisrupted} />
             </div>
           </div>
         )}

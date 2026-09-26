@@ -22,6 +22,7 @@ export async function GET(
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     const disruptionId = searchParams.get('disruptionId');
+    const overrideBrokenNodeId = searchParams.get('brokenNodeId');
     const rawMode = searchParams.get('mode') ?? 'cheapest';
     const sortBy = searchParams.get('sortBy') as 'cost' | 'time' | 'bookings' | null;
 
@@ -51,10 +52,10 @@ export async function GET(
     // 1. If a disruptionId is provided, look up that specific disruption
     // 2. Otherwise fall back to the trip's activeDisruptionId
     // 3. Otherwise pick the first broken node
-    let brokenNodeId: string | null = null;
+    let brokenNodeId: string | null = overrideBrokenNodeId ?? null;
     let triggerSource: TriggerSource | undefined;
 
-    if (disruptionId) {
+    if (!brokenNodeId && disruptionId) {
       const disruption = await db.collection('disruptions').findOne(
         ObjectId.isValid(disruptionId) ? { _id: new ObjectId(disruptionId) } : { id: disruptionId }
       );

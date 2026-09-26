@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AlertTriangle, ChevronRight, Loader2, RotateCcw, TrendingDown, ShieldAlert, Info } from 'lucide-react';
+import { RecoveryOptionsPanel } from './recovery/RecoveryOptions';
 
 interface HopChainEntry {
   nodeId: string;
@@ -54,6 +55,7 @@ export function CascadeImpactPanel({ tripId, initialResult, targetNode, onClose 
   const [result, setResult] = useState<SimulationResult | null>(initialResult ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRecovery, setShowRecovery] = useState(false);
 
   // "What if?" mode fields
   const [delayMinutes, setDelayMinutes] = useState(120);
@@ -76,6 +78,7 @@ export function CascadeImpactPanel({ tripId, initialResult, targetNode, onClose 
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error?.message ?? 'Simulation failed');
       setResult(json.data);
+      setShowRecovery(false); // Reset recovery view on new simulation
     } catch (err: any) {
       setError(err.message ?? 'Failed to run simulation');
     } finally {
@@ -257,16 +260,32 @@ export function CascadeImpactPanel({ tripId, initialResult, targetNode, onClose 
             </div>
           )}
 
-          {/* Reset */}
+          {/* Action buttons */}
           {targetNode && (
-            <button
-              onClick={() => setResult(null)}
-              className="flex items-center justify-center gap-1.5 text-xs py-2 rounded-xl"
-              style={{ background: '#F5F2E8', color: '#5F665B' }}
-            >
-              <RotateCcw size={12} />
-              Clear simulation
-            </button>
+            <div className="flex gap-3 mt-2">
+              <button
+                onClick={() => setShowRecovery(!showRecovery)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+                style={{ background: '#C5D82D', color: '#172017' }}
+              >
+                {showRecovery ? 'Hide recovery options' : 'View recovery options'}
+              </button>
+              <button
+                onClick={() => { setResult(null); setShowRecovery(false); }}
+                className="flex items-center justify-center gap-1.5 text-xs py-2.5 px-4 rounded-xl transition-all hover:bg-[#E2E8F0]"
+                style={{ background: '#F5F2E8', color: '#5F665B' }}
+              >
+                <RotateCcw size={12} />
+                Clear
+              </button>
+            </div>
+          )}
+          
+          {/* Recovery Options View */}
+          {showRecovery && (
+            <div className="mt-2 animate-slide-up">
+              <RecoveryOptionsPanel tripId={tripId} brokenNodeId={targetNode.id} />
+            </div>
           )}
         </div>
       )}

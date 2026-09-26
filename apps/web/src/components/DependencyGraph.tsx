@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { Node, Edge } from '../types';
-import { WhatIfNodeAction } from './WhatIfNodeAction';
+import { CascadeImpactPanel } from './CascadeImpactPanel';
+import { Zap, X } from 'lucide-react';
 
 interface DependencyGraphProps {
   nodes: Node[];
@@ -29,6 +30,8 @@ const getEmoji = (type: string) => {
 }
 
 export function DependencyGraph({ nodes, edges = [], animating, tripId }: DependencyGraphProps) {
+  const [whatIfNode, setWhatIfNode] = useState<{ id: string; label: string; type: string } | null>(null);
+
   if (!nodes || nodes.length === 0) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-20 px-4 text-center rounded-[20px] border border-dashed border-gray-200 bg-[#FBFBFB]">
@@ -96,9 +99,10 @@ export function DependencyGraph({ nodes, edges = [], animating, tripId }: Depend
             <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#E8F0E2] text-[#4E8752] tracking-wide">SOFT</span>
           );
           
-          // Slack/Buffer mock to match design
-          const bufferText = (edge as any)?.buffer ? `${(edge as any).buffer}m buffer` : hasEdge ? (isHard ? '3h buffer' : '60m buffer') : '';
-          const slackText = hasEdge ? `${Math.floor(Math.random() * 100 + 100)}m buf` : '0m slack';
+          // Slack/Buffer to match real data
+          const bufferText = (edge as any)?.buffer ? `${(edge as any).buffer}m buffer` : hasEdge ? (isHard ? '180m buffer' : '60m buffer') : '';
+          const slack = (edge as any)?.buffer ? (edge as any).buffer + ((edge as any).paddingMin || 0) : 0;
+          const slackText = hasEdge ? (slack > 0 ? `${slack}m buf` : '0m slack') : '';
 
           return (
             <React.Fragment key={nodeId || i}>
@@ -155,10 +159,18 @@ export function DependencyGraph({ nodes, edges = [], animating, tripId }: Depend
                     {/* D2: "What if?" action — dry-run impact simulation */}
                     {tripId && nodeId && (
                       <div className="pt-2 border-t border-gray-100">
-                        <WhatIfNodeAction
-                          tripId={tripId}
-                          node={{ id: String(nodeId), label, type }}
-                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setWhatIfNode({ id: String(nodeId), label, type });
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:scale-105 cursor-pointer"
+                          style={{ background: '#172017', color: '#C5D82D' }}
+                          title="What if this booking is disrupted?"
+                        >
+                          <Zap size={11} />
+                          What if?
+                        </button>
                       </div>
                     )}
                   </div>
@@ -178,6 +190,16 @@ export function DependencyGraph({ nodes, edges = [], animating, tripId }: Depend
           );
         })}
       </div>
+
+      {whatIfNode && (
+        <div className="mt-2 bg-white border border-gray-200 rounded-[20px] shadow-sm p-6 overflow-hidden animate-slide-up">
+          <CascadeImpactPanel
+            tripId={tripId!}
+            targetNode={whatIfNode}
+            onClose={() => setWhatIfNode(null)}
+          />
+        </div>
+      )}
     </div>
   );
 }
