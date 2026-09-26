@@ -307,20 +307,10 @@ export function generateRecoveryOptions(
     });
   }
 
-  // ── De-duplicate: same nodesDropped set → keep cheapest ───────────────────
-  const seen = new Map<string, Candidate>();
-  for (const c of candidates) {
-    const key = dedupKey(c.nodesDropped);
-    const existing = seen.get(key);
-    if (!existing || c.netCost < existing.netCost) {
-      seen.set(key, c);
-    }
-  }
-  const deduped = [...seen.values()];
-
   // ── Minimum-option guarantee: broadening step ─────────────────────────────
-  // If de-duplication left us with < 2 options, synthesise a "Partial Reroute"
-  if (deduped.length < 2) {
+  // If we have < 4 options, synthesise a "Partial Reroute" to ensure at least 4 plans
+  const finalCandidates = [...candidates];
+  if (finalCandidates.length < 4) {
     const partialDropped = affectedNodes.slice(0, Math.ceil(affectedNodes.length / 2)).map((n) => n.id);
     const partialCost = 200000; // ₹2,000 partial reroute cost
     const partialPreserved = totalBookings - partialDropped.length;
@@ -345,16 +335,16 @@ export function generateRecoveryOptions(
       sortKey: { cost: partialCost, timePenaltyMin: Math.floor(delayMin * 0.6), bookingsPreserved: partialPreserved },
       _total: 0,
     };
-    deduped.push(broadened);
+    finalCandidates.push(broadened);
   }
 
   // ── Normalise scores and apply mode weights ────────────────────────────────
-  const maxCost  = Math.max(...deduped.map((c) => c.netCost), 1);
-  const maxTime  = Math.max(...deduped.map((c) => c.timePenaltyMin), 1);
+  const maxCost  = Math.max(...finalCandidates.map((c) => c.netCost), 1);
+  const maxTime  = Math.max(...finalCandidates.map((c) => c.timePenaltyMin), 1);
   const maxBooks = Math.max(totalBookings, 1);
   const weights  = MODE_WEIGHTS[mode] ?? MODE_WEIGHTS.cheapest;
 
-  const scored = deduped.map((c) => {
+  const scored = finalCandidates.map((c) => {
     const costNorm  = 1 - c.netCost / maxCost;
     const timeNorm  = 1 - c.timePenaltyMin / maxTime;
     const nodesNorm = c.bookingsPreserved / maxBooks;

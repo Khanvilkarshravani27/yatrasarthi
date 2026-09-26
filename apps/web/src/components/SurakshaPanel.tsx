@@ -1,7 +1,10 @@
-import { Shield, MapPin, Battery, Share2, MessageSquare } from 'lucide-react';
+import { Shield, MapPin, Battery, Share2, MessageSquare, AlertTriangle } from 'lucide-react';
+import { useState } from 'react';
+import SurakshaFlow from './suraksha/SurakshaFlow';
 import type { TripData } from '../types';
 
 export function SurakshaPanel({ trip }: { trip?: TripData | null }) {
+  const [showFlow, setShowFlow] = useState(false);
   if (!trip) {
     return <div className="p-8 text-center text-gray-500">No active trip selected for Suraksha.</div>;
   }
@@ -20,6 +23,27 @@ export function SurakshaPanel({ trip }: { trip?: TripData | null }) {
             <h2 className="font-extrabold text-2xl" style={{ color: '#172017' }}>🛡️ Suraksha</h2>
             <p className="text-sm" style={{ color: '#5F665B' }}>Your trip's emergency communication layer</p>
           </div>
+        </div>
+
+                {/* Big SOS Button */}
+        <div className="mb-8">
+          <button 
+            onClick={() => setShowFlow(true)}
+            className="w-full py-8 rounded-[32px] flex flex-col items-center justify-center gap-3 transition-transform hover:scale-[1.02] active:scale-95"
+            style={{ 
+              background: 'linear-gradient(135deg, #E45B4D 0%, #B0271A 100%)', 
+              color: '#FFFFFF', 
+              boxShadow: '0 12px 30px -10px rgba(228,91,77,0.5), inset 0 2px 0 rgba(255,255,255,0.2)' 
+            }}
+          >
+            <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)' }}>
+               <AlertTriangle size={32} />
+            </div>
+            <div className="flex flex-col items-center">
+              <span className="text-3xl font-black tracking-widest uppercase">I'm Stuck (SOS)</span>
+              <span className="text-sm font-medium mt-1 opacity-90">Alert emergency contacts & share live tracking instantly</span>
+            </div>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -79,6 +103,14 @@ export function SurakshaPanel({ trip }: { trip?: TripData | null }) {
           </div>
         </div>
       </div>
+      {showFlow && trip && (
+        <SurakshaFlow
+          tripId={trip.id}
+          lastNodeId={nodes[0]?.id}
+          nextNodeId={nodes[1]?.id}
+          onClose={() => setShowFlow(false)}
+        />
+      )}
     </div>
   );
 }
