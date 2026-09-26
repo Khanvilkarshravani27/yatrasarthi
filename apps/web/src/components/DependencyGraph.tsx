@@ -1,10 +1,13 @@
 import React from 'react';
 import type { Node, Edge } from '../types';
+import { WhatIfNodeAction } from './WhatIfNodeAction';
 
 interface DependencyGraphProps {
   nodes: Node[];
   edges?: Edge[];
   animating?: boolean;
+  /** tripId needed by WhatIfNodeAction to call impact-simulate */
+  tripId?: string;
 }
 
 function safeStr(val: unknown, fallback = ''): string {
@@ -25,7 +28,7 @@ const getEmoji = (type: string) => {
   }
 }
 
-export function DependencyGraph({ nodes, edges = [], animating }: DependencyGraphProps) {
+export function DependencyGraph({ nodes, edges = [], animating, tripId }: DependencyGraphProps) {
   if (!nodes || nodes.length === 0) {
     return (
       <div className="w-full flex flex-col items-center justify-center py-20 px-4 text-center rounded-[20px] border border-dashed border-gray-200 bg-[#FBFBFB]">
@@ -121,8 +124,8 @@ export function DependencyGraph({ nodes, edges = [], animating }: DependencyGrap
                   <span className="opacity-70">{slackText}</span>
                 </div>
 
-                {/* Hover Details Tooltip */}
-                <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+14px)] w-[220px] bg-white border border-gray-100 rounded-[14px] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.2)] opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 translate-y-3 transition-all duration-300 z-50 p-4 pointer-events-none">
+                {/* Hover Details Tooltip — pointer-events enabled so WhatIf button is clickable */}
+                <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+14px)] w-[240px] bg-white border border-gray-100 rounded-[14px] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.2)] opacity-0 invisible group-hover:opacity-100 group-hover:visible group-hover:translate-y-0 translate-y-3 transition-all duration-300 z-50 p-4">
                   {/* Little upward triangle pointer */}
                   <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-l border-t border-gray-100 rotate-45" />
                   
@@ -147,6 +150,15 @@ export function DependencyGraph({ nodes, edges = [], animating }: DependencyGrap
                       <div className="flex justify-between items-center text-xs mt-1 pt-2.5 border-t border-gray-100">
                         <span className="text-[#E45B4D] font-bold">Delay detected</span>
                         <span className="font-extrabold text-[#E45B4D] bg-[#FDECEA] px-2 py-0.5 rounded text-[10px]">+{node.delay}m</span>
+                      </div>
+                    )}
+                    {/* D2: "What if?" action — dry-run impact simulation */}
+                    {tripId && nodeId && (
+                      <div className="pt-2 border-t border-gray-100">
+                        <WhatIfNodeAction
+                          tripId={tripId}
+                          node={{ id: String(nodeId), label, type }}
+                        />
                       </div>
                     )}
                   </div>

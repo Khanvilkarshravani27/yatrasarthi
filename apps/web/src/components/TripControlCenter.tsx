@@ -319,7 +319,7 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
                   </button>
                 </div>
                 <div className="w-full">
-                  <DependencyGraph nodes={trip.nodes} edges={trip.edges} animating={isDisrupted} />
+                  <DependencyGraph nodes={trip.nodes} edges={trip.edges} animating={isDisrupted} tripId={trip.id} />
                 </div>
                 {isDisrupted && (
                   <div className="mt-3 flex items-center gap-2 text-xs p-3 rounded-xl" style={{ background: '#FDECEA', color: '#B03028' }}>
@@ -359,7 +359,7 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
                   <h3 className="font-bold text-base" style={{ color: '#172017' }}>Dependency Graph</h3>
                   <span className="text-xs" style={{ color: '#5F665B' }}>Hover nodes for details</span>
                 </div>
-                <DependencyGraph nodes={trip.nodes} edges={trip.edges} animating={isDisrupted} />
+                <DependencyGraph nodes={trip.nodes} edges={trip.edges} animating={isDisrupted} tripId={trip.id} />
               </div>
               <DisruptionSimulator tripId={trip.id} onDisrupt={onDisrupt} isDisrupted={isDisrupted} />
             </div>

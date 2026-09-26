@@ -116,6 +116,12 @@ export async function POST(request: Request) {
       delayMinutes: delay,
       source,
       cause: cause ?? 'unknown',
+      // triggerSource: maps source → canonical TriggerSource for DGCA engine
+      triggerSource: body.triggerSource ?? (
+        source === 'flight_provider' ? 'delay' :
+        source === 'road_eta' && cause === 'extraordinary' ? 'weather' :
+        cause === 'airline_controlled' ? 'vendor_cancellation' : 'delay'
+      ),
       brokenNodes: [brokenNodeStringId, ...broken],
       atRiskNodes: atRisk,
       createdAt: new Date().toISOString(),
