@@ -18,6 +18,7 @@
  *   ABLY_API_KEY      - Ably REST publish key (optional; skipped gracefully if absent)
  */
 
+import 'dotenv/config';
 import { MongoClient } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;

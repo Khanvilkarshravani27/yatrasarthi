@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { phone, code } = body;
+    const { phone, code, name } = body;
 
     if (!phone || !code) {
       return NextResponse.json(
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
       isNewUser = true;
       const newUserDoc = {
         phone: formattedPhone,
-        name: 'Traveler',
+        name: name || 'Traveler',
         whatsappOptIn: false,
         notificationPrefs: {
           disruptionAlerts: 'on' as const,

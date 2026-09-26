@@ -30,7 +30,7 @@ export function MyTrips({ trips, loading = false, onSelectTrip, onNavigate, onRe
 
   // Find any trip requiring immediate attention per B1 specification
   const unhealthyTrip = trips.find(
-    t => t.status === 'needs_attention' || (t.healthScore !== undefined && t.healthScore < 60)
+    t => t.status === 'needs_attention' || t.status === 'unhealthy' || (t.healthScore !== undefined && t.healthScore < 60)
   );
 
   return (
@@ -88,7 +88,7 @@ export function MyTrips({ trips, loading = false, onSelectTrip, onNavigate, onRe
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-sm uppercase tracking-wider text-[#D93829]">
-                    Needs Attention
+                    {unhealthyTrip.status === 'unhealthy' ? 'Unhealthy' : 'Needs Attention'}
                   </span>
                   <span className="text-xs px-2 py-0.5 rounded-md bg-[#FCE4E2] font-semibold text-[#B03028]">
                     {unhealthyTrip.name || unhealthyTrip.destination}
@@ -299,6 +299,8 @@ function TripCard({
       ? 'Healthy'
       : trip.status === 'needs_attention'
       ? 'Needs Attention'
+      : trip.status === 'unhealthy'
+      ? 'Unhealthy'
       : trip.status === 'resolving'
       ? 'Resolving'
       : 'Completed';

@@ -37,7 +37,7 @@ export function AuthFlowModal() {
       return (
         <OnboardingScreen
           onComplete={handleOnboardingComplete}
-          onSkip={handleOnboardingComplete}
+          onSkip={closeAuthFlow}
         />
       );
     case 'signin':
@@ -45,6 +45,7 @@ export function AuthFlowModal() {
         <PhoneSignIn
           onSuccess={handleSignInSuccess}
           onBack={() => setAuthStep('onboarding')}
+          onClose={closeAuthFlow}
         />
       );
     case 'permissions':

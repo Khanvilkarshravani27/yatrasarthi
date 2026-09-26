@@ -4,7 +4,7 @@ export type PhantomMode      = "auto_cab" | "walk" | "local_train" | "bus" | "ot
 export type ConstraintType   = "hard" | "soft";
 export type NodeStatus       = "pending_review" | "on_track" | "at_risk" | "broken" | "confirmed" | "cancelled";
 export type TriggerSource    = "vendor_cancellation" | "weather" | "delay";
-export type TripStatus       = "healthy" | "needs_attention" | "resolving";
+export type TripStatus       = "healthy" | "needs_attention" | "unhealthy" | "resolving" | "cancelled";
 export type ActionState      = "proposed" | "awaiting_payment" | "expired" | "executing"
                        | "pending_vendor" | "confirmed" | "failed";
 export type ConfirmType      = "self_reported" | "vendor_verified";
@@ -78,6 +78,7 @@ export interface Action {
   id: string; tripId: string; disruptionId: string; optionId: string;
   state: ActionState;
   confirmType?: ConfirmType; proofRef?: string;
+  triggerSource?: "vendor_cancellation" | "weather" | string;
   agreements: { memberId: string; response: MemberResponse; respondedAt?: string }[];
   vendorDraft?: { subject: string; body: string; ruleCited?: string; sentAt?: string; nudgedAt?: string[] };
   costTotal: number; possibleCompensation?: number;
@@ -111,4 +112,22 @@ export interface RecoveryOption {
   changes: { nodeId: string; field: string; from: unknown; to: unknown }[];
   perMemberShare: { memberId: string; amount: number }[];
   quoteExpiresAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  role: "user" | "assistant" | "system" | "tool";
+  content: string;
+  toolCalls?: any[];
+  ts: string;
+}
+
+export interface ChatSession {
+  id: string;
+  tripId: string;
+  userId: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
 }

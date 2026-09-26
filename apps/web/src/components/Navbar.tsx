@@ -137,7 +137,7 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
                 className="btn-ghost flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#D5D9CC] text-xs font-bold text-[#172017] hover:bg-[#E8F0E2] transition-all cursor-pointer"
               >
                 <LogIn size={15} style={{ color: '#172017' }} />
-                <span>Sign in</span>
+                <span>Log In / Sign Up</span>
               </button>
             )}
 

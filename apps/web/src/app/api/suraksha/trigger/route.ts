@@ -15,7 +15,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { tripId, lastNodeId, nextNodeId, gps, batteryPct } = body;
+    const { tripId, lastNodeId, nextNodeId, gps, batteryPct, weatherRisk } = body;
 
     if (!tripId || !gps?.lat || !gps?.lng) {
       return NextResponse.json(
@@ -41,11 +41,12 @@ export async function POST(request: Request) {
     const nextLabel = nextNode?.label ?? nextNodeId ?? 'next stop';
     const locationLine = `GPS: ${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}`;
     const battLine = batteryPct != null ? ` | Battery: ${batteryPct}%` : '';
+    const weatherLine = weatherRisk ? `\n⚠️ WEATHER RISK: Active` : '';
     const message =
       `🚨 SURAKSHA ALERT from ${user.name || user.phone}\n` +
       `Last reached: ${lastLabel}\n` +
       `Heading to: ${nextLabel}\n` +
-      `Location: ${locationLine}${battLine}`;
+      `Location: ${locationLine}${battLine}${weatherLine}`;
 
     const contacts = user.emergencyContacts ?? [];
 
@@ -91,7 +92,7 @@ export async function POST(request: Request) {
       tripId,
       actor: user.id,
       type: 'suraksha.triggered',
-      payload: { gps, lastNodeId, nextNodeId, batteryPct, contactCount: contacts.length },
+      payload: { gps, lastNodeId, nextNodeId, batteryPct, weatherRisk, contactCount: contacts.length },
     });
 
     // Publish realtime so other group members can see "X used Suraksha"

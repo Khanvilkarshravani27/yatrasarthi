@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Share, Bell, Users, MapPin, ChevronDown, AlertTriangle, Clock, Check, RotateCcw, Settings, Compass, ShieldCheck, Navigation, Phone, Zap } from 'lucide-react';
+import { Share, Bell, Users, MapPin, ChevronDown, AlertTriangle, Clock, Check, RotateCcw, Settings, Compass, ShieldCheck, Navigation, Phone, Zap, MessageSquare, X } from 'lucide-react';
 import type { TripData, UserPreferences, RecoveryOption } from '../types';
 import { TripTimeline } from './TripTimeline';
 import { DependencyGraph } from './DependencyGraph';
@@ -11,11 +11,13 @@ import { EventTimeline } from './EventTimeline';
 import { DisruptionSimulator } from './DisruptionSimulator';
 import { KutumbInviteModal } from './trips/KutumbInviteModal';
 import { TripSettingsModal } from './trips/TripSettingsModal';
+import { AIChatPanel } from './chat/AIChatPanel';
 import IngestionHub from './ingestion/IngestionHub';
 import { RecoveryOptionsPanel } from './recovery/RecoveryOptions';
 import { GroupDecision } from './recovery/GroupDecision';
 import { VendorEmail } from './recovery/VendorEmail';
 import { PaymentStatus } from './recovery/PaymentStatus';
+import SurakshaFlow from './suraksha/SurakshaFlow';
 
 const defaultPreferences = { cost: 40, time: 80, bookings: 100 };
 
@@ -49,6 +51,8 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   // Recovery flow: tracks the actionId once a recovery option is proposed to the group
   const [activeActionId, setActiveActionId] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [showSurakshaFlow, setShowSurakshaFlow] = useState(false);
 
   const handleGeneratePaymentLinks = async () => {
     setGeneratingLinks(true);
@@ -231,6 +235,13 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
                   <Settings size={15} />
                   Settings
                 </button>
+                <button 
+                  onClick={() => setShowChat(!showChat)}
+                  className="btn-ghost text-sm border border-[#D5D9CC] rounded-xl px-3 py-2 bg-white flex items-center gap-1.5 cursor-pointer"
+                >
+                  <MessageSquare size={15} />
+                  AI Assist
+                </button>
                 <button className="btn-ghost text-sm border border-[#D5D9CC] rounded-xl p-2 bg-white">
                   <Bell size={15} />
                 </button>
@@ -330,7 +341,7 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
               </div>
             </div>
             <div className="flex flex-col gap-4">
-              {!isSolo ? <GroupPanel travellers={trip.travellers} /> : <SoloSurakshaPanel />}
+              {!isSolo ? <GroupPanel travellers={trip.travellers} /> : <SoloSurakshaPanel onTrigger={() => setShowSurakshaFlow(true)} />}
               {(trip.eventLog?.length ?? 0) > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -522,6 +533,23 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
           }}
         />
       )}
+
+      {/* Screen I1-I5: AI Chat Panel Floating Widget */}
+      {showChat && (
+        <div className="fixed bottom-24 right-8 z-40 animate-slide-up shadow-2xl rounded-2xl">
+          <div className="absolute -top-3 -right-3 z-50 bg-white rounded-full p-1 shadow-md cursor-pointer hover:bg-gray-100" onClick={() => setShowChat(false)}>
+            <X size={16} />
+          </div>
+          <AIChatPanel tripId={trip.id} />
+        </div>
+      )}
+
+      {showSurakshaFlow && (
+        <SurakshaFlow
+          tripId={trip.id}
+          onClose={() => setShowSurakshaFlow(false)}
+        />
+      )}
     </div>
   );
 }
@@ -609,7 +637,7 @@ function BookingsTab({ nodes }: { nodes: any[] }) {
   );
 }
 
-export function SoloSurakshaPanel() {
+export function SoloSurakshaPanel({ onTrigger }: { onTrigger?: () => void }) {
   return (
     <div className="card p-5 border rounded-2xl shadow-sm relative overflow-hidden" style={{ background: 'linear-gradient(145deg, #FDFDFD 0%, #F5F7F3 100%)', borderColor: '#C6DDA6' }}>
       <div className="absolute top-0 right-0 w-32 h-32 bg-[#E8F0E2] rounded-full blur-3xl -mr-10 -mt-10 opacity-60 pointer-events-none" />
@@ -653,9 +681,12 @@ export function SoloSurakshaPanel() {
           </div>
         </div>
 
-        <button className="w-full mt-4 py-2.5 rounded-xl border border-[#C6DDA6] text-[13px] font-bold text-[#4E8752] bg-white hover:bg-[#F5F9F0] transition-colors shadow-sm flex items-center justify-center gap-2">
-          <Share size={14} />
-          Share Live Location
+        <button 
+          onClick={onTrigger}
+          className="w-full mt-4 py-3 rounded-xl border border-red-500 text-[14px] font-extrabold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-lg flex items-center justify-center gap-2"
+        >
+          <AlertTriangle size={16} />
+          Trigger Suraksha SOS
         </button>
       </div>
     </div>

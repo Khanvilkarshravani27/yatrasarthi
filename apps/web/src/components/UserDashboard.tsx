@@ -18,8 +18,8 @@ interface UserDashboardProps {
 export function UserDashboard({ trips, activeTrip, onSelectTrip, onNavigate, user }: UserDashboardProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'dgca' | 'payments' | 'vault' | 'settings'>('overview');
   
-  const displayName = user?.name || (user?.phone ? `Traveler (${user.phone})` : 'Harsh');
-  const initial = displayName ? displayName[0].toUpperCase() : 'U';
+  const displayName = user?.name || (user?.phone ? `Traveler (${user.phone})` : 'Traveler');
+  const initial = displayName ? displayName[0].toUpperCase() : 'T';
 
   return (
     <div className="min-h-screen pb-24 md:pb-12" style={{ background: '#F5F2E8' }}>
