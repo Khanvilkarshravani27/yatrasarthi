@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Check, X, ChevronRight, Loader2 } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -71,7 +71,7 @@ export function RecoveryOptionsPanel({
     }
   };
 
-  const sortedOptions = React.useMemo(() => {
+  const sortedOptions = useMemo(() => {
     if (!options.length) return [];
     const totalW = (weights.cost + weights.time + weights.itinerary) || 1;
     const wC = weights.cost / totalW;
