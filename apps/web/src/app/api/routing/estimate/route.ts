@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 // GET /api/routing/estimate?from=&to=
-// Primary: Google Maps Routes API. Fallback: static heuristic.
+// Primary: Mapbox Directions API. Fallback: static heuristic.
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const from = searchParams.get('from');
@@ -11,31 +11,36 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: { code: 'VALIDATION_ERROR', message: 'from and to are required' } }, { status: 422 });
   }
 
-  // Try Google Maps Routes API if key is available
-  const googleKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (googleKey) {
+  // Try Mapbox Directions API if token is available
+  const mapboxToken = process.env.MAPBOX_ACCESS_TOKEN;
+  if (mapboxToken) {
     try {
-      const resp = await fetch('https://routes.googleapis.com/directions/v2:computeRoutes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': googleKey,
-          'X-Goog-FieldMask': 'routes.duration',
-        },
-        body: JSON.stringify({
-          origin: { address: from },
-          destination: { address: to },
-          travelMode: 'DRIVE',
-        }),
-      });
+      // Mapbox requires coordinates, so we geocode both addresses first using Mapbox Geocoding API
+      const geocode = async (address: string): Promise<[number, number] | null> => {
+        const url = `https://api.mapbox.com/search/geocode/v6/forward?q=${encodeURIComponent(address)}&limit=1&access_token=${mapboxToken}`;
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const coords = data.features?.[0]?.geometry?.coordinates;
+        return coords ? [coords[0], coords[1]] : null;
+      };
 
-      if (resp.ok) {
-        const data = await resp.json();
-        const durationSec = parseInt(data.routes?.[0]?.duration ?? '0', 10);
-        if (durationSec > 0) {
-          return NextResponse.json({
-            data: { estimatedMin: Math.ceil(durationSec / 60), provider: 'google_routes', fallbackUsed: false },
-          });
+      const [fromCoords, toCoords] = await Promise.all([geocode(from), geocode(to)]);
+
+      if (fromCoords && toCoords) {
+        const [fromLng, fromLat] = fromCoords;
+        const [toLng, toLat] = toCoords;
+        const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${fromLng},${fromLat};${toLng},${toLat}?access_token=${mapboxToken}&overview=false`;
+        const resp = await fetch(directionsUrl);
+
+        if (resp.ok) {
+          const data = await resp.json();
+          const durationSec = data.routes?.[0]?.duration;
+          if (durationSec > 0) {
+            return NextResponse.json({
+              data: { estimatedMin: Math.ceil(durationSec / 60), provider: 'mapbox', fallbackUsed: false },
+            });
+          }
         }
       }
     } catch {
