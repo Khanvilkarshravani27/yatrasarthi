@@ -1,21 +1,21 @@
-import { Node, Edge } from '@yatrasarthi/types';
+import { Node, Edge, RecoveryOption, RankingMode, TriggerSource } from '@yatrasarthi/types';
 import { TripGraph } from '@yatrasarthi/graph';
 
 /**
- * Real recovery option ranker.
+ * Recovery Option Ranker — Person 4 addendum extension
  *
- * Output shape matches both:
- * - The `RecoveryOption` interface in packages/types (api_contract.md §1)
- * - The `RecoveryOptionData` interface in components/recovery/RecoveryOptions.tsx
+ * Addendum changes over v1:
+ *  1. Four labelled plans instead of three (adds "Wait & Monitor" as an explicit plan)
+ *  2. De-duplication: plans with identical nodesDropped sets are merged, cheapest kept
+ *  3. Minimum-option guarantee: if fewer than 2 unique plans survive, broadening step
+ *     injects a synthetic "Partial Reroute" option so the user always sees ≥ 2 choices
+ *  4. triggerSource wired into DGCA policy engine:
+ *       - vendor_cancellation → full DGCA compensation eligible (₹5,000–₹10,000)
+ *       - weather             → compensation NOT eligible (extraordinary circumstances)
+ *       - delay               → compensation eligible only when delay ≥ 2h and airline-controlled
+ *  5. Sortable: each option carries sortKey so the frontend can re-sort on any axis
  *
- * Strategy:
- * 1. Find the broken node and run TripGraph to get cascade impact
- * 2. Generate 3 candidate strategies (skip-soft, rebook, phantom leg)
- * 3. Score on 3 axes: cost, time penalty, bookings preserved
- * 4. Normalise scores 0-1 (Pareto), compute weighted total
- * 5. Sort descending, mark top as recommended
- *
- * Scoring weights: 35% cost · 35% time · 30% bookings (matches api_contract §6)
+ * Output shape: RecoveryOption[] (extends packages/types RecoveryOption with label + sortKey)
  */
 
 interface RawNode extends Node {
@@ -23,13 +23,63 @@ interface RawNode extends Node {
   delay?: number;
 }
 
-type RankingMode = 'cheapest' | 'fastest' | 'preserve_itinerary';
+// ── DGCA compensation rules wired to triggerSource ─────────────────────────
+
+interface DGCAResult {
+  eligible: boolean;
+  amountPaise: number;   // 0 if not eligible
+  reason: string;
+}
+
+function dgcaCompensation(
+  nodeType: string,
+  delayMin: number,
+  triggerSource?: TriggerSource
+): DGCAResult {
+  if (nodeType !== 'flight') {
+    return { eligible: false, amountPaise: 0, reason: 'DGCA only applies to flights' };
+  }
+
+  // Weather = extraordinary circumstances → no compensation (DGCA para 3.3)
+  if (triggerSource === 'weather') {
+    return {
+      eligible: false,
+      amountPaise: 0,
+      reason: 'Extraordinary circumstances (weather) — DGCA compensation not applicable',
+    };
+  }
+
+  // Vendor-initiated cancellation → full cancellation compensation (DGCA para 4.2)
+  if (triggerSource === 'vendor_cancellation') {
+    return {
+      eligible: true,
+      // ₹5,000 for routes ≤ 1h, ₹10,000 for routes > 1h (distance heuristic via delay)
+      amountPaise: delayMin <= 60 ? 500000 : 1000000,
+      reason: 'Vendor-initiated cancellation — DGCA cancellation compensation applicable',
+    };
+  }
+
+  // Standard delay — eligible only when ≥ 2h
+  if (delayMin >= 120) {
+    return {
+      eligible: true,
+      amountPaise: delayMin >= 360 ? 1000000 : 500000,
+      reason: 'Flight delayed ≥ 2h — DGCA delay compensation applicable',
+    };
+  }
+
+  return { eligible: false, amountPaise: 0, reason: 'Delay < 2h — below DGCA threshold' };
+}
+
+// ── Mode weight table ───────────────────────────────────────────────────────
 
 const MODE_WEIGHTS: Record<RankingMode, { cost: number; time: number; bookings: number }> = {
   cheapest:           { cost: 0.60, time: 0.20, bookings: 0.20 },
   fastest:            { cost: 0.20, time: 0.60, bookings: 0.20 },
   preserve_itinerary: { cost: 0.20, time: 0.20, bookings: 0.60 },
 };
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
 function arrivalTimeFromDelay(baseIso: string | undefined, extraMin: number): string {
   if (!baseIso) return 'Unknown';
@@ -46,23 +96,41 @@ function isoExpiry(fromNow: number): string {
   return new Date(Date.now() + fromNow).toISOString();
 }
 
+/** Stable key for de-duplication: sorted dropped node set */
+function dedupKey(nodesDropped: string[]): string {
+  return [...nodesDropped].sort().join('|');
+}
+
+// ── Extended RecoveryOption with sort keys ───────────────────────────────────
+
+export interface ExtendedRecoveryOption extends RecoveryOption {
+  label: 'skip_reschedule' | 'rebook' | 'alternate_transit' | 'wait_monitor' | 'partial_reroute';
+  dgca: DGCAResult;
+  sortKey: { cost: number; timePenaltyMin: number; bookingsPreserved: number };
+}
+
+// ── Main export ─────────────────────────────────────────────────────────────
+
 export function generateRecoveryOptions(
   tripId: string,
   rawNodes: RawNode[],
   rawEdges: Edge[],
   brokenNodeId: string,
-  mode: RankingMode = 'cheapest'
-) {
+  mode: RankingMode = 'cheapest',
+  triggerSource?: TriggerSource
+): ExtendedRecoveryOption[] {
   const nodes = rawNodes.map((n) => ({ ...n, id: n.id ?? (n as any)._id?.toString() }));
   const edges = rawEdges.map((e) => ({ ...e, id: e.id ?? (e as any)._id?.toString() }));
 
   const brokenNode = nodes.find((n) => n.id === brokenNodeId) as any;
   const totalBookings = nodes.filter((n) => n.type !== 'phantom').length;
 
+  // ── Fallback when no broken node found ────────────────────────────────────
   if (!brokenNode) {
-    return [{
+    const waitOption: ExtendedRecoveryOption = {
       optionId: 'opt_wait',
       name: 'Wait & Monitor',
+      label: 'wait_monitor',
       netCost: 0,
       possibleCompensation: 0,
       arrivalTime: arrivalTimeFromDelay(nodes[nodes.length - 1]?.time, 0),
@@ -72,10 +140,13 @@ export function generateRecoveryOptions(
       changes: [],
       perMemberShare: [],
       quoteExpiresAt: isoExpiry(30 * 60 * 1000),
-    }];
+      dgca: { eligible: false, amountPaise: 0, reason: 'No active disruption' },
+      sortKey: { cost: 0, timePenaltyMin: 0, bookingsPreserved: totalBookings },
+    };
+    return [waitOption];
   }
 
-  // Build graph and propagate delay
+  // ── Build graph and propagate delay ───────────────────────────────────────
   const graph = new TripGraph();
   nodes.forEach((n) => graph.addNode(n.id));
   edges.forEach((e) =>
@@ -95,80 +166,65 @@ export function generateRecoveryOptions(
   const affectedNodes = nodes.filter((n) => affectedIds.has(n.id) && n.id !== brokenNodeId) as any[];
   const unaffectedNodes = nodes.filter((n) => !affectedIds.has(n.id)) as any[];
   const lastNode = nodes[nodes.length - 1];
-
-  // Collect member IDs for per-member share split (evenly split among affected members)
   const memberIds = [...new Set(nodes.map((n: any) => n.ownerId).filter(Boolean))];
 
-  interface Candidate {
-    optionId: string;
-    name: string;
-    netCost: number;            // paise
-    possibleCompensation: number;
-    arrivalTime: string;
-    nodesDropped: string[];
+  // DGCA assessment for this disruption
+  const dgca = dgcaCompensation(brokenNode.type, delayMin, triggerSource);
+
+  interface Candidate extends ExtendedRecoveryOption {
     timePenaltyMin: number;
     bookingsPreserved: number;
-    recommended: boolean;
-    scoreBreakdown: { costNorm: number; timeNorm: number; nodesNorm: number };
-    changes: { nodeId: string; field: string; from: unknown; to: unknown }[];
-    perMemberShare: { memberId: string; amount: number }[];
-    quoteExpiresAt: string;
+    _total: number;
   }
 
   const candidates: Candidate[] = [];
 
-  // ── Option 1: Skip soft-constraint downstream nodes, keep hard ones ──────
+  // ── Option 1: Skip & Reschedule (soft-constraint nodes dropped) ───────────
   {
     const softDropped = affectedNodes.filter((n) => n.constraintType !== 'hard');
-    const hardBlocked = affectedNodes.filter((n) => n.constraintType === 'hard');
-    const feasible = hardBlocked.length === 0;
-
-    // Cancellation cost: ₹500 per non-refundable soft booking
     const cancelCost = softDropped.reduce(
       (sum, n) => sum + (n.refundPolicy?.source === 'unmatched' ? 50000 : 0),
       0
     );
-    const preserved = unaffectedNodes.length;  // bookings kept
+    const preserved = unaffectedNodes.length;
 
     candidates.push({
       optionId: 'opt_skip',
       name: 'Skip & Reschedule',
+      label: 'skip_reschedule',
       netCost: cancelCost,
-      possibleCompensation: 0,
+      possibleCompensation: dgca.eligible ? dgca.amountPaise : 0,
       arrivalTime: arrivalTimeFromDelay(lastNode?.time, delayMin),
       nodesDropped: softDropped.map((n) => n.id),
       timePenaltyMin: delayMin,
       bookingsPreserved: preserved,
       recommended: false,
       scoreBreakdown: { costNorm: 0, timeNorm: 0, nodesNorm: 0 },
-      changes: softDropped.map((n) => ({
-        nodeId: n.id,
-        field: 'status',
-        from: n.status,
-        to: 'cancelled',
-      })),
+      changes: softDropped.map((n) => ({ nodeId: n.id, field: 'status', from: n.status, to: 'cancelled' })),
       perMemberShare: memberIds.map((mid) => ({ memberId: mid, amount: Math.round(cancelCost / memberIds.length) })),
       quoteExpiresAt: isoExpiry(30 * 60 * 1000),
+      dgca,
+      sortKey: { cost: cancelCost, timePenaltyMin: delayMin, bookingsPreserved: preserved },
+      _total: 0,
     });
   }
 
-  // ── Option 2: Rebook the broken node ────────────────────────────────────
+  // ── Option 2: Rebook the broken node ─────────────────────────────────────
   {
     const rebookCostPaise =
       brokenNode.type === 'flight' ? 650000 :
       brokenNode.type === 'train'  ? 120000 :
       brokenNode.type === 'hotel'  ? 300000 : 80000;
 
-    // DGCA compensation applies when flight delay > 2h and airline-controlled
-    const possibleCompensation = brokenNode.type === 'flight' && delayMin >= 120 ? 1000000 : 0;
     const timeSaved = Math.max(0, delayMin - 60);
-    const preserved = totalBookings; // rebook keeps everything
+    const preserved = totalBookings;
 
     candidates.push({
       optionId: 'opt_rebook',
       name: `Rebook ${brokenNode.label || brokenNode.type}`,
+      label: 'rebook',
       netCost: rebookCostPaise,
-      possibleCompensation,
+      possibleCompensation: dgca.eligible ? dgca.amountPaise : 0,
       arrivalTime: arrivalTimeFromDelay(lastNode?.time, delayMin - timeSaved),
       nodesDropped: [],
       timePenaltyMin: delayMin - timeSaved,
@@ -176,17 +232,17 @@ export function generateRecoveryOptions(
       recommended: false,
       scoreBreakdown: { costNorm: 0, timeNorm: 0, nodesNorm: 0 },
       changes: [{ nodeId: brokenNodeId, field: 'status', from: 'broken', to: 'on_track' }],
-      perMemberShare: memberIds.map((mid) => ({
-        memberId: mid,
-        amount: Math.round(rebookCostPaise / memberIds.length),
-      })),
-      quoteExpiresAt: isoExpiry(20 * 60 * 1000), // prices expire in 20min
+      perMemberShare: memberIds.map((mid) => ({ memberId: mid, amount: Math.round(rebookCostPaise / memberIds.length) })),
+      quoteExpiresAt: isoExpiry(20 * 60 * 1000),
+      dgca,
+      sortKey: { cost: rebookCostPaise, timePenaltyMin: delayMin - timeSaved, bookingsPreserved: preserved },
+      _total: 0,
     });
   }
 
-  // ── Option 3: Add a phantom transit leg to bridge the gap ───────────────
+  // ── Option 3: Add Alternate Transit (phantom leg) ─────────────────────────
   {
-    const phantomCostPaise = 150000; // ₹1500
+    const phantomCostPaise = 150000;
     const softDropped = affectedNodes.filter(
       (n) => n.constraintType !== 'hard' && !['hotel', 'flight', 'train'].includes(n.type)
     );
@@ -195,6 +251,7 @@ export function generateRecoveryOptions(
     candidates.push({
       optionId: 'opt_phantom',
       name: 'Add Alternate Transit',
+      label: 'alternate_transit',
       netCost: phantomCostPaise,
       possibleCompensation: 0,
       arrivalTime: arrivalTimeFromDelay(lastNode?.time, delayMin + 30),
@@ -205,39 +262,96 @@ export function generateRecoveryOptions(
       scoreBreakdown: { costNorm: 0, timeNorm: 0, nodesNorm: 0 },
       changes: [
         ...softDropped.map((n) => ({ nodeId: n.id, field: 'status', from: n.status, to: 'cancelled' })),
-        {
-          nodeId: 'phantom_new',
-          field: 'type',
-          from: null,
-          to: 'phantom',
-        },
+        { nodeId: 'phantom_new', field: 'type', from: null, to: 'phantom' },
       ],
-      perMemberShare: memberIds.map((mid) => ({
-        memberId: mid,
-        amount: Math.round(phantomCostPaise / memberIds.length),
-      })),
+      perMemberShare: memberIds.map((mid) => ({ memberId: mid, amount: Math.round(phantomCostPaise / memberIds.length) })),
       quoteExpiresAt: isoExpiry(30 * 60 * 1000),
+      dgca,
+      sortKey: { cost: phantomCostPaise, timePenaltyMin: delayMin + 30, bookingsPreserved: preserved },
+      _total: 0,
     });
   }
 
-  // ── Normalise scores (0→1) and apply mode weights ───────────────────────
-  const maxCost = Math.max(...candidates.map((c) => c.netCost), 1);
-  const maxTime = Math.max(...candidates.map((c) => c.timePenaltyMin), 1);
+  // ── Option 4: Wait & Monitor (explicit plan — always included) ─────────────
+  {
+    candidates.push({
+      optionId: 'opt_wait',
+      name: 'Wait & Monitor',
+      label: 'wait_monitor',
+      netCost: 0,
+      possibleCompensation: dgca.eligible ? dgca.amountPaise : 0,
+      arrivalTime: arrivalTimeFromDelay(lastNode?.time, delayMin),
+      nodesDropped: [],
+      timePenaltyMin: delayMin,
+      bookingsPreserved: totalBookings,
+      recommended: false,
+      scoreBreakdown: { costNorm: 0, timeNorm: 0, nodesNorm: 0 },
+      changes: [],
+      perMemberShare: [],
+      quoteExpiresAt: isoExpiry(60 * 60 * 1000),
+      dgca,
+      sortKey: { cost: 0, timePenaltyMin: delayMin, bookingsPreserved: totalBookings },
+      _total: 0,
+    });
+  }
+
+  // ── De-duplicate: same nodesDropped set → keep cheapest ───────────────────
+  const seen = new Map<string, Candidate>();
+  for (const c of candidates) {
+    const key = dedupKey(c.nodesDropped);
+    const existing = seen.get(key);
+    if (!existing || c.netCost < existing.netCost) {
+      seen.set(key, c);
+    }
+  }
+  const deduped = [...seen.values()];
+
+  // ── Minimum-option guarantee: broadening step ─────────────────────────────
+  // If de-duplication left us with < 2 options, synthesise a "Partial Reroute"
+  if (deduped.length < 2) {
+    const partialDropped = affectedNodes.slice(0, Math.ceil(affectedNodes.length / 2)).map((n) => n.id);
+    const partialCost = 200000; // ₹2,000 partial reroute cost
+    const partialPreserved = totalBookings - partialDropped.length;
+
+    const broadened: Candidate = {
+      optionId: 'opt_partial_reroute',
+      name: 'Partial Reroute',
+      label: 'partial_reroute',
+      netCost: partialCost,
+      possibleCompensation: dgca.eligible ? Math.floor(dgca.amountPaise / 2) : 0,
+      arrivalTime: arrivalTimeFromDelay(lastNode?.time, Math.floor(delayMin * 0.6)),
+      nodesDropped: partialDropped,
+      timePenaltyMin: Math.floor(delayMin * 0.6),
+      bookingsPreserved: partialPreserved,
+      recommended: false,
+      scoreBreakdown: { costNorm: 0, timeNorm: 0, nodesNorm: 0 },
+      changes: partialDropped.map((id) => ({ nodeId: id, field: 'status', from: 'broken', to: 'cancelled' })),
+      perMemberShare: memberIds.map((mid) => ({ memberId: mid, amount: Math.round(partialCost / memberIds.length) })),
+      quoteExpiresAt: isoExpiry(30 * 60 * 1000),
+      dgca,
+      sortKey: { cost: partialCost, timePenaltyMin: Math.floor(delayMin * 0.6), bookingsPreserved: partialPreserved },
+      _total: 0,
+    };
+    deduped.push(broadened);
+  }
+
+  // ── Normalise scores and apply mode weights ────────────────────────────────
+  const maxCost  = Math.max(...deduped.map((c) => c.netCost), 1);
+  const maxTime  = Math.max(...deduped.map((c) => c.timePenaltyMin), 1);
   const maxBooks = Math.max(totalBookings, 1);
+  const weights  = MODE_WEIGHTS[mode] ?? MODE_WEIGHTS.cheapest;
 
-  const weights = MODE_WEIGHTS[mode] ?? MODE_WEIGHTS.cheapest;
-
-  const scored = candidates.map((c) => {
-    const costNorm = 1 - c.netCost / maxCost;
-    const timeNorm = 1 - c.timePenaltyMin / maxTime;
+  const scored = deduped.map((c) => {
+    const costNorm  = 1 - c.netCost / maxCost;
+    const timeNorm  = 1 - c.timePenaltyMin / maxTime;
     const nodesNorm = c.bookingsPreserved / maxBooks;
-    const total = costNorm * weights.cost + timeNorm * weights.time + nodesNorm * weights.bookings;
+    const total     = costNorm * weights.cost + timeNorm * weights.time + nodesNorm * weights.bookings;
     return { ...c, scoreBreakdown: { costNorm, timeNorm, nodesNorm }, _total: total };
   });
 
   scored.sort((a, b) => b._total - a._total);
   scored[0].recommended = true;
 
-  // Strip internal _total before returning
-  return scored.slice(0, 3).map(({ _total, ...rest }) => rest);
+  // Return up to 4 options; strip internal fields
+  return scored.slice(0, 4).map(({ _total, timePenaltyMin, bookingsPreserved, ...rest }) => rest);
 }

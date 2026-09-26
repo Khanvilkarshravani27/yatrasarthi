@@ -74,7 +74,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     // 6. Find the weakest link — member with the worst status
     const statusPriority: Record<string, number> = { broken: 4, at_risk: 3, pending_review: 2, on_track: 1, confirmed: 0 };
     const weakestMember = memberStatuses.reduce(
-      (weakest, m) =>
+      (weakest: typeof memberStatuses[0] | null, m: typeof memberStatuses[0]) =>
         (statusPriority[m.status] ?? 0) > (statusPriority[weakest?.status ?? 'on_track'] ?? 0) ? m : weakest,
       memberStatuses[0] ?? null
     );
