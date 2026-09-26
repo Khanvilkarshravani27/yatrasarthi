@@ -330,47 +330,43 @@ function OptionCard({
         )}
       </div>
 
-      {/* Cost */}
-      <div>
-        <div className="text-2xl font-extrabold" style={{ color: '#172017' }}>
-          {netCostRupees === 0 ? 'Free' : `+₹${netCostRupees.toLocaleString()}`}
+      {/* Highlight Cards Grid */}
+      <div className="grid grid-cols-2 gap-2 my-1">
+        <div className="rounded-xl p-3 flex flex-col gap-1 border" style={{ background: '#F5F2E8', borderColor: '#EDE9D8' }}>
+          <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#858B80' }}>Cost change</div>
+          <div className="text-sm font-extrabold" style={{ color: netCostRupees === 0 ? '#4E8752' : '#D93829' }}>
+            {netCostRupees === 0 ? '₹0 extra' : `+₹${netCostRupees.toLocaleString()} extra`}
+          </div>
         </div>
-        {compensationRupees > 0 && (
-          <div className="text-xs mt-0.5" style={{ color: '#4E8752' }}>
-            Possible DGCA compensation: up to ₹{compensationRupees.toLocaleString()} — not guaranteed
+        
+        <div className="rounded-xl p-3 flex flex-col gap-1 border" style={{ background: '#F5F2E8', borderColor: '#EDE9D8' }}>
+          <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#858B80' }}>Time impact</div>
+          <div className="text-sm font-extrabold" style={{ color: option.scoreBreakdown.timeNorm >= 0.8 ? '#4E8752' : '#D93829' }}>
+            {option.scoreBreakdown.timeNorm >= 0.8 ? 'On time' : `ETA ${option.arrivalTime}`}
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Details */}
-      <div className="flex flex-col gap-1 text-xs" style={{ color: '#5F665B' }}>
-        <div><Check size={11} className="inline mr-1 text-[#2E7D32]" />Arrival: {option.arrivalTime}</div>
-        {droppedLabels.map((label) => (
-          <div key={label}><X size={11} className="inline mr-1 text-[#D93829]" />Drops: {label}</div>
-        ))}
-      </div>
-
-      {/* Score bars */}
-      <div className="flex flex-col gap-1">
-        {([
-          ['Cost', option.scoreBreakdown.costNorm, '#4E8752'],
-          ['Time', option.scoreBreakdown.timeNorm, '#172017'],
-          ['Itinerary', option.scoreBreakdown.nodesNorm, '#C5D82D'],
-        ] as [string, number, string][]).map(([label, score, color]) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <div className="text-xs w-14" style={{ color: '#858B80' }}>{label}</div>
-            <div className="flex-1 h-1.5 rounded-full" style={{ background: '#EDE9D8' }}>
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${Math.round(score * 100)}%`, background: color, transition: 'width 0.4s' }}
-              />
-            </div>
-            <div className="text-xs w-7 text-right" style={{ color: '#858B80' }}>
-              {Math.round(score * 100)}
-            </div>
+        <div className="rounded-xl p-3 flex flex-col gap-1 border" style={{ background: '#F5F2E8', borderColor: '#EDE9D8' }}>
+          <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#858B80' }}>Bookings changed</div>
+          <div className="text-sm font-extrabold" style={{ color: '#172017' }}>
+            {droppedLabels.length === 0 ? 'None' : `${droppedLabels.length} booking${droppedLabels.length > 1 ? 's' : ''}`}
           </div>
-        ))}
+        </div>
+
+        <div className="rounded-xl p-3 flex flex-col gap-1 border" style={{ background: '#F5F2E8', borderColor: '#EDE9D8' }}>
+          <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: '#858B80' }}>Legs replaced</div>
+          <div className="text-sm font-extrabold" style={{ color: '#172017' }}>
+            {!option.changes || option.changes.length === 0 ? 'None' : `${option.changes.length} leg${option.changes.length > 1 ? 's' : ''}`}
+          </div>
+        </div>
       </div>
+      
+      {compensationRupees > 0 && (
+        <div className="text-[11px] font-semibold flex items-center mt-1" style={{ color: '#4E8752' }}>
+          <Check size={12} className="inline mr-1" />
+          Eligible for up to ₹{compensationRupees.toLocaleString()} DGCA compensation
+        </div>
+      )}
 
       {/* Quote expiry */}
       {expiresMinStr && (
