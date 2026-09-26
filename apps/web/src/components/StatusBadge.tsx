@@ -7,6 +7,7 @@ export function StatusBadge({ status }: { status: NodeStatus }) {
     at_risk: { label: 'At Risk', className: 'status-pending' },
     broken: { label: 'Broken', className: 'status-disrupted' },
     pending_review: { label: 'Pending Review', className: 'status-pending' },
+    cancelled: { label: 'Cancelled', className: 'status-disrupted' },
   };
   const { label, className } = map[status] || map.pending_review;
   return (

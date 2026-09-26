@@ -208,8 +208,8 @@ export function RecoveryOptionsPanel({
                 <XAxis type="number" dataKey="x" name="Cost" tickFormatter={(v) => `₹${v.toLocaleString()}`} />
                 <YAxis type="number" dataKey="y" name="Arrival" />
                 <Tooltip
-                  formatter={(value: number, name: string) =>
-                    name === 'Cost' ? [`₹${value.toLocaleString()}`, name] : [value, name]
+                  formatter={(value: unknown, name: unknown) =>
+                    name === 'Cost' ? [`₹${Number(value).toLocaleString()}`, 'Cost'] : [value as number, String(name ?? '')]
                   }
                 />
                 {scatterData.map((d, i) => (

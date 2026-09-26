@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     });
 
     const result = await db.collection('payments').insertMany(paymentDocs);
-    const insertedIds = Object.values(result.insertedIds).map(id => id.toString());
+    const insertedIds = (Object.values(result.insertedIds) as any[]).map(id => id.toString());
 
     const links = paymentDocs.map((doc, i) => ({
       id: insertedIds[i],

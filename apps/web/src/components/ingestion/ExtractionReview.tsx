@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { Node } from '@yatrasarthi/types';
 
 interface ExtractionReviewProps {
-  node: Node & { triggerSource?: 'vendor_cancellation' | 'delay' };
+  node: Node & { triggerSource?: 'vendor_cancellation' | 'delay' | 'weather' };
   onConfirmed: () => void;
   onBack: () => void;
   onPhantom: () => void;

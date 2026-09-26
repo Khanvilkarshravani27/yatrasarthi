@@ -361,7 +361,7 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
                 </div>
                 <DependencyGraph nodes={trip.nodes} edges={trip.edges} animating={isDisrupted} />
               </div>
-              <DisruptionSimulator onDisrupt={onDisrupt} isDisrupted={isDisrupted} />
+              <DisruptionSimulator tripId={trip.id} onDisrupt={onDisrupt} isDisrupted={isDisrupted} />
             </div>
           </div>
         )}

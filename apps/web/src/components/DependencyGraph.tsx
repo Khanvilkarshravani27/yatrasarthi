@@ -74,7 +74,7 @@ export function DependencyGraph({ nodes, edges = [], animating }: DependencyGrap
           const nodeId = node.id || node._id;
           
           const nextNode = nodes[i + 1];
-          const nextNodeId = nextNode?.id || nextNode?._id;
+          const nextNodeId = nextNode ? ((nextNode as any).id || (nextNode as any)._id) : undefined;
           const edge = edges.find((e: any) => e.from === nodeId && e.to === nextNodeId);
           const hasEdge = !!nextNodeId;
           
@@ -94,7 +94,7 @@ export function DependencyGraph({ nodes, edges = [], animating }: DependencyGrap
           );
           
           // Slack/Buffer mock to match design
-          const bufferText = edge?.buffer ? `${edge.buffer}m buffer` : hasEdge ? (isHard ? '3h buffer' : '60m buffer') : '';
+          const bufferText = (edge as any)?.buffer ? `${(edge as any).buffer}m buffer` : hasEdge ? (isHard ? '3h buffer' : '60m buffer') : '';
           const slackText = hasEdge ? `${Math.floor(Math.random() * 100 + 100)}m buf` : '0m slack';
 
           return (
