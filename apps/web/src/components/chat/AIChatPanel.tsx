@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Check, X, Loader2 } from 'lucide-react';
-import type { ChatMessage } from '@workspace/types';
+import type { ChatMessage } from '@yatrasarthi/types';
 
 export function AIChatPanel({ tripId }: { tripId: string }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -56,7 +56,7 @@ export function AIChatPanel({ tripId }: { tripId: string }) {
       if (m.id === messageId && m.toolCalls) {
         return {
           ...m,
-          toolCalls: m.toolCalls.map(tc => tc.id === toolCallId ? { ...tc, confirmed } : tc)
+          toolCalls: m.toolCalls.map((tc: any) => tc.id === toolCallId ? { ...tc, confirmed } : tc)
         };
       }
       return m;
@@ -66,7 +66,7 @@ export function AIChatPanel({ tripId }: { tripId: string }) {
     if (confirmed) {
       // Find the specific tool call
       const msg = messages.find(m => m.id === messageId);
-      const toolCall = msg?.toolCalls?.find(tc => tc.id === toolCallId);
+      const toolCall = msg?.toolCalls?.find((tc: any) => tc.id === toolCallId);
       
       if (!toolCall) return;
 
