@@ -51,6 +51,7 @@ export async function POST(request: Request) {
       status: 'pending_review' as const,
       rawExtract: extracted.fields,
       confidence: extracted.confidence,
+      ...(extracted.triggerSource ? { triggerSource: extracted.triggerSource } : {}),
       createdAt: now,
       updatedAt: now,
     };

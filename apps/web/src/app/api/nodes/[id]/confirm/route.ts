@@ -14,10 +14,22 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const node = await db.collection('nodes').findOne({ _id: new ObjectId(id) });
     if (!node) return NextResponse.json({ error: { code: 'NOT_FOUND', message: 'Node not found' } }, { status: 404 });
 
+    // Determine the target status.
+    // If the extraction classified this as a vendor cancellation, the node
+    // enters as "cancelled" immediately — no active disruption needed.
+    const triggerSource: string | undefined = body.triggerSource ?? node.triggerSource;
+    const targetStatus = triggerSource === 'vendor_cancellation' ? 'cancelled' : 'on_track';
+
     const update: Record<string, unknown> = {
-      status: 'on_track',
+      status: targetStatus,
       updatedAt: new Date().toISOString(),
     };
+
+    // Persist triggerSource so downstream systems (cascade engine, DGCA policy
+    // engine) can read it without re-extracting.
+    if (triggerSource) {
+      update['triggerSource'] = triggerSource;
+    }
 
     // Merge any corrected fields from the review screen
     if (body.fields) {

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { Node } from '@yatrasarthi/types';
 
 interface ExtractionReviewProps {
-  node: Node;
+  node: Node & { triggerSource?: 'vendor_cancellation' | 'delay' };
   onConfirmed: () => void;
   onBack: () => void;
   onPhantom: () => void;
@@ -24,6 +24,8 @@ export default function ExtractionReview({ node, onConfirmed, onBack, onPhantom 
     return score !== undefined && score < 0.7;
   };
 
+  const isCancellation = node.triggerSource === 'vendor_cancellation';
+
   const handleConfirm = async () => {
     setLoading(true);
     setError('');
@@ -31,7 +33,12 @@ export default function ExtractionReview({ node, onConfirmed, onBack, onPhantom 
       const res = await fetch(`/api/nodes/${node.id}/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fields: { ...fields, type: nodeType }, refundTier: refundTier || undefined }),
+        body: JSON.stringify({
+          fields: { ...fields, type: nodeType },
+          refundTier: refundTier || undefined,
+          // Forward triggerSource so the confirm route can set status=cancelled
+          triggerSource: node.triggerSource,
+        }),
       });
 
       if (!res.ok) {
@@ -50,11 +57,37 @@ export default function ExtractionReview({ node, onConfirmed, onBack, onPhantom 
 
   const hasPolicy = !!node.refundPolicy && node.refundPolicy.source !== 'unmatched';
 
-
   return (
     <div style={styles.container}>
       <button style={styles.back} onClick={onBack}>← Back</button>
       <h2 style={styles.heading}>Confirm what we found</h2>
+
+      {/* Cancellation / delay disruption alert banner */}
+      {isCancellation && (
+        <div style={styles.cancellationBanner}>
+          <span style={styles.cancellationIcon}>🚫</span>
+          <div>
+            <p style={styles.cancellationTitle}>This booking looks cancelled</p>
+            <p style={styles.cancellationBody}>
+              We detected a cancellation notice. We&apos;ll mark it as cancelled when you add it —
+              the trip timeline will show it and you can start a recovery plan from there.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {node.triggerSource === 'delay' && (
+        <div style={styles.delayBanner}>
+          <span style={styles.delayIcon}>⚠️</span>
+          <div>
+            <p style={styles.delayTitle}>Delay detected</p>
+            <p style={styles.delayBody}>
+              This message mentions a delay. We&apos;ll add it normally — you can report the delay
+              separately from the trip timeline to trigger the cascade check.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Booking type */}
       <div style={styles.section}>
@@ -114,8 +147,12 @@ export default function ExtractionReview({ node, onConfirmed, onBack, onPhantom 
 
       <div style={styles.actions}>
         <button style={styles.cancelBtn} onClick={onBack} disabled={loading}>Cancel</button>
-        <button style={{ ...styles.confirmBtn, opacity: loading ? 0.6 : 1 }} onClick={handleConfirm} disabled={loading}>
-          {loading ? 'Adding…' : 'Looks right, add it'}
+        <button
+          style={{ ...styles.confirmBtn, opacity: loading ? 0.6 : 1 }}
+          onClick={handleConfirm}
+          disabled={loading}
+        >
+          {loading ? 'Adding…' : isCancellation ? 'Add as cancelled' : 'Looks right, add it'}
         </button>
       </div>
 
@@ -128,6 +165,25 @@ const styles: Record<string, React.CSSProperties> = {
   container: { padding: '20px', maxWidth: 480, margin: '0 auto', fontFamily: 'Inter, sans-serif' },
   back: { background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: 14, padding: 0, marginBottom: 16 },
   heading: { fontSize: 22, fontWeight: 700, color: '#0f172a', marginBottom: 24 },
+  // Cancellation banner
+  cancellationBanner: {
+    display: 'flex', alignItems: 'flex-start', gap: 12,
+    background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12,
+    padding: '14px 16px', marginBottom: 20,
+  },
+  cancellationIcon: { fontSize: 20, flexShrink: 0 },
+  cancellationTitle: { fontSize: 14, fontWeight: 700, color: '#7f1d1d', margin: '0 0 4px' },
+  cancellationBody: { fontSize: 13, color: '#991b1b', margin: 0, lineHeight: 1.5 },
+  // Delay banner
+  delayBanner: {
+    display: 'flex', alignItems: 'flex-start', gap: 12,
+    background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 12,
+    padding: '14px 16px', marginBottom: 20,
+  },
+  delayIcon: { fontSize: 20, flexShrink: 0 },
+  delayTitle: { fontSize: 14, fontWeight: 700, color: '#92400e', margin: '0 0 4px' },
+  delayBody: { fontSize: 13, color: '#78350f', margin: 0, lineHeight: 1.5 },
+  // Existing styles
   section: { marginBottom: 24 },
   label: { fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 },
   select: { width: '100%', padding: '10px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, color: '#0f172a', background: '#fff' },

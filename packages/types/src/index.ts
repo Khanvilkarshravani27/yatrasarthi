@@ -2,7 +2,8 @@
 export type NodeType        = "flight" | "train" | "bus" | "cab" | "hotel" | "phantom";
 export type PhantomMode      = "auto_cab" | "walk" | "local_train" | "bus" | "other";
 export type ConstraintType   = "hard" | "soft";
-export type NodeStatus       = "pending_review" | "on_track" | "at_risk" | "broken" | "confirmed";
+export type NodeStatus       = "pending_review" | "on_track" | "at_risk" | "broken" | "confirmed" | "cancelled";
+export type TriggerSource    = "vendor_cancellation" | "weather" | "delay";
 export type TripStatus       = "healthy" | "needs_attention" | "resolving";
 export type ActionState      = "proposed" | "awaiting_payment" | "expired" | "executing"
                        | "pending_vendor" | "confirmed" | "failed";
@@ -55,6 +56,7 @@ export interface Node {
   time: string;
   constraintType: ConstraintType;
   status: NodeStatus;
+  triggerSource?: TriggerSource;                 // set when a disruption signal (cancellation/delay) was detected during extraction
   rawExtract: Record<string, unknown>;
   confidence?: Record<string, number>;           
   refundPolicy?: {

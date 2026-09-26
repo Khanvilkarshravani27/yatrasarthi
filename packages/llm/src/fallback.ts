@@ -1,4 +1,5 @@
-import type { ExtractedBooking, ExtractorProvider } from './types';
+import type { ExtractedBooking, ExtractorProvider, ChatMessage, ChatResponse } from './types';
+import type { ToolDefinition } from './tools';
 
 /**
  * FallbackAdapter tries the `primary` provider first.
@@ -40,6 +41,21 @@ export class FallbackAdapter implements ExtractorProvider {
         (err as Error).message,
       );
       return this.secondary.draftVendorEmail(ctx);
+    }
+  }
+
+  /**
+   * Tool-calling mode — same primary-then-secondary fallback pattern.
+   */
+  async callTool(messages: ChatMessage[], tools: ToolDefinition[]): Promise<ChatResponse> {
+    try {
+      return await this.primary.callTool(messages, tools);
+    } catch (err) {
+      console.warn(
+        `[llm] ${this.primaryName} callTool failed — falling back to ${this.secondaryName}:`,
+        (err as Error).message,
+      );
+      return this.secondary.callTool(messages, tools);
     }
   }
 }

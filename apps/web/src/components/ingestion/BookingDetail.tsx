@@ -38,14 +38,46 @@ export default function BookingDetail({ nodeId, onBack, onDeleted }: BookingDeta
   if (loading) return <div style={styles.loading}>Loading…</div>;
   if (!node) return <div style={styles.loading}>Booking not found.</div>;
 
+  const isCancelled = node.status === 'cancelled';
   const constraintLabel = node.constraintType === 'hard' ? 'Fixed time — cannot be moved' : 'Can wait, at a cost';
+
   const statusColors: Record<string, string> = {
-    pending_review: '#f59e0b', on_track: '#22c55e', at_risk: '#f97316', broken: '#ef4444', confirmed: '#22c55e',
+    pending_review: '#f59e0b',
+    on_track:       '#22c55e',
+    at_risk:        '#f97316',
+    broken:         '#ef4444',
+    confirmed:      '#22c55e',
+    cancelled:      '#64748b',
   };
 
   return (
     <div style={styles.container}>
       <button style={styles.back} onClick={onBack}>← Back</button>
+
+      {/* Cancelled-booking banner (addendum §3.1) */}
+      {isCancelled && (
+        <div style={styles.cancelledBanner}>
+          <span style={styles.cancelledIcon}>🚫</span>
+          <div>
+            <p style={styles.cancelledTitle}>This booking was cancelled</p>
+            <p style={styles.cancelledBody}>
+              {node.triggerSource === 'vendor_cancellation'
+                ? 'The vendor cancelled this booking. Every downstream connection has been marked hard-broken — open a recovery plan to find an alternative.'
+                : 'This booking is cancelled. Start a recovery plan to find an alternative.'}
+            </p>
+            <button
+              style={styles.recoveryLink}
+              onClick={() => {
+                // Navigate to recovery options — Person 4's screen (E3).
+                // We emit a custom event so the parent shell can route there.
+                window.dispatchEvent(new CustomEvent('yatra:open-recovery', { detail: { nodeId } }));
+              }}
+            >
+              View recovery options →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={styles.header}>
@@ -53,7 +85,11 @@ export default function BookingDetail({ nodeId, onBack, onDeleted }: BookingDeta
           <h2 style={styles.heading}>{node.label}</h2>
           <p style={styles.subheading}>{node.vendor ?? node.type}</p>
         </div>
-        <span style={{ ...styles.statusBadge, background: (statusColors[node.status] ?? '#94a3b8') + '20', color: statusColors[node.status] ?? '#94a3b8' }}>
+        <span style={{
+          ...styles.statusBadge,
+          background: (statusColors[node.status] ?? '#94a3b8') + '20',
+          color: statusColors[node.status] ?? '#94a3b8',
+        }}>
           {node.status.replace(/_/g, ' ')}
         </span>
       </div>
@@ -61,14 +97,34 @@ export default function BookingDetail({ nodeId, onBack, onDeleted }: BookingDeta
       {/* Timing */}
       <div style={styles.section}>
         <p style={styles.label}>Date &amp; time</p>
-        <p style={styles.value}>{node.time ? (isNaN(new Date(node.time).getTime()) ? String(node.time) : new Date(node.time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })) : '—'}</p>
+        <p style={styles.value}>
+          {node.time
+            ? (isNaN(new Date(node.time).getTime())
+              ? String(node.time)
+              : new Date(node.time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }))
+            : '—'}
+        </p>
       </div>
 
-      {/* Constraint */}
-      <div style={styles.section}>
-        <p style={styles.label}>Constraint</p>
-        <p style={styles.value}>{constraintLabel}</p>
-      </div>
+      {/* Constraint — hide for cancelled nodes (irrelevant once cancelled) */}
+      {!isCancelled && (
+        <div style={styles.section}>
+          <p style={styles.label}>Constraint</p>
+          <p style={styles.value}>{constraintLabel}</p>
+        </div>
+      )}
+
+      {/* Trigger source — shown only when set */}
+      {node.triggerSource && (
+        <div style={styles.section}>
+          <p style={styles.label}>Disruption source</p>
+          <p style={styles.value}>
+            {node.triggerSource === 'vendor_cancellation' && 'Vendor cancellation'}
+            {node.triggerSource === 'weather'              && 'Weather'}
+            {node.triggerSource === 'delay'                && 'Delay'}
+          </p>
+        </div>
+      )}
 
       {/* Position in trip */}
       {(node.prevNodeId || node.nextNodeId) && (
@@ -125,6 +181,20 @@ const styles: Record<string, React.CSSProperties> = {
   container: { padding: '20px', maxWidth: 480, margin: '0 auto', fontFamily: 'Inter, sans-serif' },
   loading: { padding: '40px', textAlign: 'center', color: '#94a3b8', fontFamily: 'Inter, sans-serif' },
   back: { background: 'none', border: 'none', color: '#6366f1', cursor: 'pointer', fontSize: 14, padding: 0, marginBottom: 16 },
+  // Cancelled banner
+  cancelledBanner: {
+    display: 'flex', alignItems: 'flex-start', gap: 12,
+    background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 12,
+    padding: '14px 16px', marginBottom: 20,
+  },
+  cancelledIcon: { fontSize: 22, flexShrink: 0 },
+  cancelledTitle: { fontSize: 14, fontWeight: 700, color: '#7f1d1d', margin: '0 0 4px' },
+  cancelledBody: { fontSize: 13, color: '#991b1b', margin: '0 0 10px', lineHeight: 1.5 },
+  recoveryLink: {
+    background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer',
+    fontSize: 13, fontWeight: 700, padding: 0, textDecoration: 'underline',
+  },
+  // Header
   header: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24 },
   heading: { fontSize: 20, fontWeight: 700, color: '#0f172a', margin: 0 },
   subheading: { fontSize: 13, color: '#94a3b8', marginTop: 4 },
