@@ -55,7 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    checkSession().then(currentUser => {
+    // Enforce a minimum 2.5s delay so the beautiful splash animation is actually visible
+    const minSplashDelay = new Promise(resolve => setTimeout(resolve, 2500));
+    const sessionPromise = checkSession();
+
+    Promise.all([minSplashDelay, sessionPromise]).then(([_, currentUser]) => {
       // If no session found on initial app open, prompt onboarding/login
       if (!currentUser) {
         // Check if user has seen onboarding before
