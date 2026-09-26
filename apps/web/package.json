@@ -13,6 +13,7 @@
         "@yatrasarthi/llm": "workspace:*",
         "@yatrasarthi/types": "workspace:*",
         "dotenv": "^18.0.3",
+        "framer-motion": "^13.4.4",
         "jose": "^6.2.12",
         "lucide-react": "^1.48.0",
         "mongodb": "^7.6.0",

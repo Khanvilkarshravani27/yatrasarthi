@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, ChevronRight, Loader2 } from 'lucide-react';
 import { ScatterChart, Scatter, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
@@ -186,9 +187,6 @@ export function RecoveryOptionsPanel({
         </div>
       </div>
 
-      {sortedOptions.length > 0 && (
-        <PreferencesCard weights={weights} setWeights={setWeights} />
-      )}
       {/* Error */}
       {error && (
         <div className="mb-4 p-3 rounded-xl text-sm" style={{ background: '#FDECEA', color: '#B03028' }}>
@@ -206,25 +204,43 @@ export function RecoveryOptionsPanel({
         </div>
       )}
 
-      {/* Cards view */}
-      {sortedOptions.length > 0 && view === 'cards' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {sortedOptions.map((option, i) => (
-            <OptionCard
-              key={option.optionId}
-              option={option}
-              rank={i}
-              nodeLabels={nodeLabels}
-              isProposed={proposed === option.optionId}
-              isProposing={proposing === option.optionId}
-              onPropose={() => handlePropose(option.optionId)}
-            />
-          ))}
-        </div>
-      )}
+      {/* Main Content Area */}
+      {sortedOptions.length > 0 && (
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          {/* Sidebar / Preferences */}
+          <div className="w-full lg:w-[32%] flex-shrink-0">
+            <PreferencesCard weights={weights} setWeights={setWeights} />
+          </div>
 
-      {/* Compare (Pareto scatter) view */}
-      {sortedOptions.length > 0 && view === 'compare' && (
+          {/* Cards/Compare View */}
+          <div className="w-full lg:w-[68%] flex-1">
+            {view === 'cards' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <AnimatePresence mode="popLayout">
+                  {sortedOptions.map((option, i) => (
+                    <motion.div
+                      key={option.optionId}
+                      layout
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <OptionCard
+                        option={option}
+                        rank={i}
+                        nodeLabels={nodeLabels}
+                        isProposed={proposed === option.optionId}
+                        isProposing={proposing === option.optionId}
+                        onPropose={() => handlePropose(option.optionId)}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {view === 'compare' && (
         <div className="card p-6" style={{ background: '#F5F2E8', borderColor: '#D5D9CC' }}>
           <h4 className="font-semibold mb-1" style={{ color: '#172017' }}>Cost vs. Arrival time</h4>
           <p className="text-xs mb-3" style={{ color: '#5F665B' }}>
@@ -246,6 +262,9 @@ export function RecoveryOptionsPanel({
                 ))}
               </ScatterChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      )}
           </div>
         </div>
       )}
