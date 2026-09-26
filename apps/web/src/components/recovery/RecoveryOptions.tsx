@@ -47,9 +47,6 @@ export function RecoveryOptionsPanel({
   const [proposing, setProposing] = useState<string | null>(null);
   const [proposed, setProposed] = useState<string | null>(null);
   const [weights, setWeights] = useState({ cost: 60, time: 20, itinerary: 20 });
-  const [loading, setLoading] = useState(false);
-  const [proposing, setProposing] = useState<string | null>(null);
-  const [proposed, setProposed] = useState<string | null>(null);
   const [view, setView] = useState<'cards' | 'compare'>('cards');
   const [error, setError] = useState<string | null>(null);
 
