@@ -31,13 +31,9 @@ interface RecoveryOptionsProps {
   onProposed?: (actionId: string) => void;
 }
 
-type RankingMode = 'cheapest' | 'fastest' | 'preserve_itinerary';
-
-const MODE_LABELS: Record<RankingMode, string> = {
-  cheapest: 'Cheapest',
-  fastest: 'Fastest',
-  preserve_itinerary: 'Preserve itinerary',
-};
+interface ExtendedRecoveryOptionData extends RecoveryOptionData {
+  computedScore?: number;
+}
 
 export function RecoveryOptionsPanel({
   tripId,
@@ -50,17 +46,20 @@ export function RecoveryOptionsPanel({
   const [loading, setLoading] = useState(false);
   const [proposing, setProposing] = useState<string | null>(null);
   const [proposed, setProposed] = useState<string | null>(null);
+  const [weights, setWeights] = useState({ cost: 60, time: 20, itinerary: 20 });
+  const [loading, setLoading] = useState(false);
+  const [proposing, setProposing] = useState<string | null>(null);
+  const [proposed, setProposed] = useState<string | null>(null);
   const [view, setView] = useState<'cards' | 'compare'>('cards');
-  const [mode, setMode] = useState<RankingMode>('cheapest');
   const [error, setError] = useState<string | null>(null);
 
-  const loadOptions = async (rankingMode: RankingMode = mode) => {
+  const loadOptions = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Pass ?mode= query param per api_contract.md §6
+      // Pass ?mode=cheapest just to fetch options (backend mode limits to 4, cheapest usually has best variety)
       const url = new URL(`/api/trips/${tripId}/recovery-options`, window.location.origin);
-      url.searchParams.set('mode', rankingMode);
+      url.searchParams.set('mode', 'cheapest');
       if (brokenNodeId) url.searchParams.set('brokenNodeId', brokenNodeId);
       
       const res = await fetch(url.toString());
@@ -75,10 +74,23 @@ export function RecoveryOptionsPanel({
     }
   };
 
-  const handleModeChange = (newMode: RankingMode) => {
-    setMode(newMode);
-    loadOptions(newMode);
-  };
+  const sortedOptions = React.useMemo(() => {
+    if (!options.length) return [];
+    const totalW = (weights.cost + weights.time + weights.itinerary) || 1;
+    const wC = weights.cost / totalW;
+    const wT = weights.time / totalW;
+    const wI = weights.itinerary / totalW;
+
+    const scored = options.map(opt => {
+      const score = (opt.scoreBreakdown.costNorm * wC) + 
+                    (opt.scoreBreakdown.timeNorm * wT) + 
+                    (opt.scoreBreakdown.nodesNorm * wI);
+      return { ...opt, computedScore: score };
+    });
+
+    scored.sort((a, b) => b.computedScore - a.computedScore);
+    return scored.map((opt, i) => ({ ...opt, recommended: i === 0 }));
+  }, [options, weights]);
 
   const handlePropose = async (optionId: string) => {
     setProposing(optionId);
@@ -127,7 +139,7 @@ export function RecoveryOptionsPanel({
     }
   };
 
-  const scatterData = options.map((o, i) => ({
+  const scatterData = sortedOptions.map((o, i) => ({
     x: Math.round(o.netCost / 100), // paise → rupees
     y: parseInt(o.arrivalTime.replace(':', '')),
     name: o.name,
@@ -141,13 +153,13 @@ export function RecoveryOptionsPanel({
         <div>
           <h3 className="font-bold text-lg" style={{ color: '#172017' }}>Recovery Options</h3>
           <p className="text-sm mt-0.5" style={{ color: '#5F665B' }}>
-            {options.length > 0
-              ? `${options.length} option${options.length !== 1 ? 's' : ''} — ranked by preference`
+            {sortedOptions.length > 0
+              ? `${sortedOptions.length} option${sortedOptions.length !== 1 ? 's' : ''} — ranked by preference`
               : 'Load options to see available recovery paths'}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {options.length > 0 && (
+          {sortedOptions.length > 0 && (
             <div className="flex rounded-xl overflow-hidden border" style={{ borderColor: '#D5D9CC' }}>
               <button
                 onClick={() => setView('cards')}
@@ -172,29 +184,14 @@ export function RecoveryOptionsPanel({
             style={{ borderColor: '#D5D9CC', background: '#EDE9D8', color: '#172017' }}
           >
             {loading ? <Loader2 size={13} className="animate-spin" /> : <ChevronRight size={13} />}
-            {loading ? 'Loading…' : options.length > 0 ? 'Refresh' : 'Load options'}
+            {loading ? 'Loading…' : sortedOptions.length > 0 ? 'Refresh' : 'Load options'}
           </button>
         </div>
       </div>
 
-      {/* Ranking mode toggle — E3 preference toggle */}
-      <div className="flex gap-1.5 mb-4">
-        {(Object.keys(MODE_LABELS) as RankingMode[]).map((m) => (
-          <button
-            key={m}
-            onClick={() => handleModeChange(m)}
-            className="text-xs px-3 py-1.5 rounded-full font-semibold transition-colors"
-            style={{
-              background: mode === m ? '#172017' : '#F5F2E8',
-              color: mode === m ? '#F5F2E8' : '#5F665B',
-              border: `1px solid ${mode === m ? '#172017' : '#D5D9CC'}`,
-            }}
-          >
-            {MODE_LABELS[m]}
-          </button>
-        ))}
-      </div>
-
+      {sortedOptions.length > 0 && (
+        <PreferencesCard weights={weights} setWeights={setWeights} />
+      )}
       {/* Error */}
       {error && (
         <div className="mb-4 p-3 rounded-xl text-sm" style={{ background: '#FDECEA', color: '#B03028' }}>
@@ -203,7 +200,7 @@ export function RecoveryOptionsPanel({
       )}
 
       {/* Empty state */}
-      {options.length === 0 && !loading && (
+      {sortedOptions.length === 0 && !loading && (
         <div className="text-center py-8" style={{ color: '#5F665B' }}>
           <p className="text-sm mb-4">No options loaded yet.</p>
           <button onClick={() => loadOptions()} className="btn-primary px-5 py-2 text-sm">
@@ -213,14 +210,13 @@ export function RecoveryOptionsPanel({
       )}
 
       {/* Cards view */}
-      {options.length > 0 && view === 'cards' && (
+      {sortedOptions.length > 0 && view === 'cards' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {options.map((option, i) => (
+          {sortedOptions.map((option, i) => (
             <OptionCard
               key={option.optionId}
               option={option}
               rank={i}
-              mode={mode}
               nodeLabels={nodeLabels}
               isProposed={proposed === option.optionId}
               isProposing={proposing === option.optionId}
@@ -231,7 +227,7 @@ export function RecoveryOptionsPanel({
       )}
 
       {/* Compare (Pareto scatter) view */}
-      {options.length > 0 && view === 'compare' && (
+      {sortedOptions.length > 0 && view === 'compare' && (
         <div className="card p-6" style={{ background: '#F5F2E8', borderColor: '#D5D9CC' }}>
           <h4 className="font-semibold mb-1" style={{ color: '#172017' }}>Cost vs. Arrival time</h4>
           <p className="text-xs mb-3" style={{ color: '#5F665B' }}>
@@ -263,15 +259,13 @@ export function RecoveryOptionsPanel({
 function OptionCard({
   option,
   rank,
-  mode,
   nodeLabels,
   isProposed,
   isProposing,
   onPropose,
 }: {
-  option: RecoveryOptionData;
+  option: ExtendedRecoveryOptionData;
   rank: number;
-  mode: RankingMode;
   nodeLabels: Record<string, string>;
   isProposed: boolean;
   isProposing: boolean;
@@ -299,15 +293,17 @@ function OptionCard({
         boxShadow: option.recommended ? '0 0 0 2px #C5D82D33' : undefined,
       }}
     >
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start mb-2">
         {option.recommended ? (
           <div className="text-xs font-bold px-2 py-1 rounded-full inline-block" style={{ background: '#C5D82D', color: '#172017' }}>
             ⭐ Recommended
           </div>
         ) : <div />}
-        <div className="text-[10px] font-extrabold uppercase px-2 py-1 rounded-md" style={{ background: '#EDE9D8', color: '#5F665B' }}>
-          {mode === 'cheapest' ? 'Cost Score: ' : mode === 'fastest' ? 'Time Score: ' : 'Itinerary Score: '}
-          {Math.round((mode === 'cheapest' ? option.scoreBreakdown.costNorm : mode === 'fastest' ? option.scoreBreakdown.timeNorm : option.scoreBreakdown.nodesNorm) * 100)}
+        <div className="flex flex-col items-end">
+          <span className="text-[10px] uppercase font-bold text-gray-500 mb-0.5">Match Score</span>
+          <span className="text-2xl font-black leading-none" style={{ color: (option.computedScore ?? 0) >= 0.8 ? '#4E8752' : (option.computedScore ?? 0) >= 0.5 ? '#E5A43F' : '#E45B4D' }}>
+            {Math.round((option.computedScore ?? 0) * 100)}<span className="text-sm">%</span>
+          </span>
         </div>
       </div>
 
@@ -383,6 +379,89 @@ function OptionCard({
           {isProposing ? 'Updating…' : 'Update Itinerary'}
         </button>
       )}
+    </div>
+  );
+}
+
+function PreferencesCard({
+  weights,
+  setWeights,
+}: {
+  weights: { cost: number; time: number; itinerary: number };
+  setWeights: (w: { cost: number; time: number; itinerary: number }) => void;
+}) {
+  const setPreset = (cost: number, time: number, itinerary: number) => setWeights({ cost, time, itinerary });
+  
+  return (
+    <div className="p-6 rounded-3xl text-white mb-6 relative overflow-hidden" style={{ background: '#13161A', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.5)' }}>
+      {/* Decorative gradient blob */}
+      <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full bg-[#45B07C] opacity-[0.03] blur-3xl" />
+      
+      <div className="relative z-10">
+        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Optimize For</div>
+        <h4 className="text-xl font-bold mb-5 tracking-tight text-[#F9FCF5]">Adjust preferences to re-rank plans</h4>
+        
+        <div className="flex flex-wrap gap-2.5 mb-7">
+          <button onClick={() => setPreset(33, 33, 34)} className="px-3.5 py-1.5 rounded-full text-xs font-semibold hover:bg-[#2D333B] transition-colors border border-transparent hover:border-gray-600" style={{ background: '#22272E', color: '#E5E7EB' }}>⚖️ Balanced</button>
+          <button onClick={() => setPreset(80, 10, 10)} className="px-3.5 py-1.5 rounded-full text-xs font-semibold hover:bg-[#2D333B] transition-colors border border-transparent hover:border-gray-600" style={{ background: '#22272E', color: '#45B07C' }}>💰 Cheapest</button>
+          <button onClick={() => setPreset(10, 80, 10)} className="px-3.5 py-1.5 rounded-full text-xs font-semibold hover:bg-[#2D333B] transition-colors border border-transparent hover:border-gray-600" style={{ background: '#22272E', color: '#4B7BFF' }}>⚡ Fastest</button>
+          <button onClick={() => setPreset(10, 10, 80)} className="px-3.5 py-1.5 rounded-full text-xs font-semibold hover:bg-[#2D333B] transition-colors border border-transparent hover:border-gray-600" style={{ background: '#22272E', color: '#C5D82D' }}>🗺️ Keep trip</button>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <SliderRow label="Cost" subtext="Prefer cheaper options" icon="₹" color="#45B07C" value={weights.cost} onChange={(v) => setWeights({...weights, cost: v})} />
+          <SliderRow label="Speed" subtext="Minimise delays" icon="⏱" color="#4B7BFF" value={weights.time} onChange={(v) => setWeights({...weights, time: v})} />
+          <SliderRow label="Keep itinerary" subtext="Change as little as possible" icon="🗺" color="#C5D82D" value={weights.itinerary} onChange={(v) => setWeights({...weights, itinerary: v})} />
+        </div>
+
+        <div className="mt-7 p-4 rounded-xl text-xs flex items-center gap-3" style={{ background: '#1C2128', color: '#9CA3AF' }}>
+          <div className="w-1.5 h-1.5 rounded-full bg-[#45B07C] animate-pulse" />
+          Moving any slider instantly re-runs the scoring engine and re-orders the plans below.
+        </div>
+      </div>
+      <style dangerouslySetInnerHTML={{__html: `
+        input[type=range].pref-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #ffffff;
+          cursor: pointer;
+          box-shadow: 0 0 10px rgba(0,0,0,0.5);
+          transition: transform 0.1s;
+        }
+        input[type=range].pref-slider::-webkit-slider-thumb:hover {
+          transform: scale(1.2);
+        }
+      `}} />
+    </div>
+  );
+}
+
+function SliderRow({ label, subtext, icon, color, value, onChange }: { label: string, subtext: string, icon: string, color: string, value: number, onChange: (v: number) => void }) {
+  return (
+    <div className="group">
+      <div className="flex justify-between items-end mb-2.5">
+        <div className="flex items-center gap-3">
+          <span className="w-6 h-6 flex items-center justify-center rounded-md bg-[#22272E] text-sm opacity-80 group-hover:opacity-100 transition-opacity">{icon}</span>
+          <div>
+            <div className="font-bold text-[15px] leading-tight tracking-wide text-gray-100">{label}</div>
+            <div className="text-[11px] text-gray-400 mt-0.5">{subtext}</div>
+          </div>
+        </div>
+        <div className="font-extrabold text-base transition-colors" style={{ color }}>{value}</div>
+      </div>
+      <input 
+        type="range" 
+        min="0" max="100" 
+        value={value} 
+        onChange={(e) => onChange(parseInt(e.target.value))}
+        className="pref-slider w-full h-1.5 rounded-full appearance-none outline-none cursor-pointer"
+        style={{
+          background: `linear-gradient(to right, ${color} ${value}%, #2D333B ${value}%)`
+        }}
+      />
     </div>
   );
 }
