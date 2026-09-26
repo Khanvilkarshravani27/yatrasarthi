@@ -55,8 +55,15 @@ export async function POST(request: Request) {
     const twilioToken = process.env.TWILIO_AUTH_TOKEN;
     const twilioFrom = process.env.TWILIO_WHATSAPP_NUMBER || process.env.TWILIO_FROM_NUMBER;
 
+    console.log('[DEBUG] twilio params:', {
+      hasSid: !!twilioSid,
+      hasToken: !!twilioToken,
+      twilioFrom,
+      contactCount: contacts.length
+    });
+
     if (twilioSid && twilioToken && twilioFrom && contacts.length > 0) {
-      await Promise.allSettled(
+      const results = await Promise.allSettled(
         contacts.map(async (contact: { phone: string; deliveryMethod: string }) => {
           const to =
             contact.deliveryMethod === 'whatsapp'
@@ -68,7 +75,7 @@ export async function POST(request: Request) {
               : twilioFrom;
 
           const formBody = new URLSearchParams({ To: to, From: from, Body: message });
-          await fetch(
+          const res = await fetch(
             `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
             {
               method: 'POST',
@@ -79,6 +86,13 @@ export async function POST(request: Request) {
               body: formBody.toString(),
             }
           );
+          
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error(`[suraksha] Twilio error for ${to}: ${res.status} ${errText}`);
+          } else {
+            console.log(`[suraksha] Successfully sent Twilio alert to ${to}`);
+          }
         })
       );
     } else if (contacts.length > 0) {

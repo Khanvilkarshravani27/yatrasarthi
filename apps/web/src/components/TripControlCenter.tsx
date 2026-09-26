@@ -545,10 +545,14 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
       )}
 
       {showSurakshaFlow && (
-        <SurakshaFlow
-          tripId={trip.id}
-          onClose={() => setShowSurakshaFlow(false)}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up relative">
+            <SurakshaFlow
+              tripId={trip.id}
+              onClose={() => setShowSurakshaFlow(false)}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
