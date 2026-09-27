@@ -21,11 +21,12 @@ import SurakshaFlow from './suraksha/SurakshaFlow';
 
 const defaultPreferences = { cost: 40, time: 80, bookings: 100 };
 
-type Tab = 'overview' | 'journey' | 'group' | 'bookings' | 'recovery' | 'activity';
+type Tab = 'overview' | 'journey' | 'group' | 'bookings' | 'recovery';
 
 interface TripControlCenterProps {
   trip: TripData;
   onDisrupt: (scenarioId: string) => void;
+  onNavigate?: (page: string) => void;
 }
 
 const tabs: { id: Tab; label: string }[] = [
@@ -34,10 +35,9 @@ const tabs: { id: Tab; label: string }[] = [
   { id: 'group', label: 'Group' },
   { id: 'bookings', label: 'Bookings' },
   { id: 'recovery', label: 'Recovery' },
-  { id: 'activity', label: 'Activity' },
 ];
 
-export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlCenterProps) {
+export function TripControlCenter({ trip: initialTrip, onDisrupt, onNavigate }: TripControlCenterProps) {
   const [activeTab, setActiveTab] = useState<Tab>(initialTrip.nodes && initialTrip.nodes.length > 0 ? 'overview' : 'bookings');
   const [prefs, setPrefs] = useState<UserPreferences>(defaultPreferences);
   const [selectedPlan, setSelectedPlan] = useState<string | undefined>();
@@ -105,13 +105,20 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
             if (data.status) newTrip.status = data.status;
             
             if (data.nodes?.length > 0) {
-              newTrip.nodes = data.nodes.map((n: any) => ({
-                ...n,
-                label: n.vendor || n.type,
-                status: n.status === 'broken' ? 'disrupted' : n.status === 'scheduled' ? 'confirmed' : 'pending',
-                scheduledTime: new Date(n.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-                trustLevel: 'high'
-              }));
+              newTrip.nodes = data.nodes.map((n: any) => {
+                let mappedStatus = 'pending';
+                if (n.status === 'broken') mappedStatus = 'disrupted';
+                else if (['scheduled', 'on_track', 'healthy', 'confirmed', 'recovered'].includes(n.status)) mappedStatus = 'confirmed';
+                else if (n.status === 'cancelled') mappedStatus = 'cancelled';
+                
+                return {
+                  ...n,
+                  label: n.vendor || n.type,
+                  status: mappedStatus,
+                  scheduledTime: new Date(n.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
+                  trustLevel: 'high'
+                };
+              });
             }
             if (data.edges?.length > 0) {
               newTrip.edges = data.edges.map((e: any) => ({
@@ -201,7 +208,7 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
                 </div>
                 <div className="flex items-center gap-1.5 text-sm" style={{ color: '#5F665B' }}>
                   {isSolo ? <Compass size={13} className="text-[#4E8752]" /> : <Users size={13} />}
-                  {isSolo ? 'Solo Explorer (1 traveler)' : `${trip.travellers.length} travelers`}
+                  {isSolo ? 'Solo Explorer (1 traveler)' : `${trip.travellers?.length || 0} travelers`}
                 </div>
                 <div className="text-xs font-semibold px-2 py-0.5 rounded" style={{ background: '#DCE8D2', color: '#172017', border: '1px solid #D5D9CC' }}>
                   ID: {trip.id}
@@ -499,12 +506,6 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
           </div>
         )}
 
-        {/* ACTIVITY */}
-        {activeTab === 'activity' && (
-          <div className="max-w-2xl">
-            <EventTimeline events={trip.eventLog?.length > 0 ? trip.eventLog : [{ id: '0', tripId: trip.id, seq: 1, actor: 'system', ts: new Date().toISOString(), payload: { message: 'Trip created and saved. No events yet.' }, type: 'info' }]} />
-          </div>
-        )}
       </div>
 
       {/* Screen B3: Kutumb Invite Modal */}
@@ -526,6 +527,11 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt }: TripControlC
             fetch(`/api/trips/${trip.id}`).then(r => r.json()).then(d => {
               if (d.data) setTrip(prev => ({ ...prev, ...d.data }));
             });
+          }}
+          onTripDeleted={() => {
+            if (onNavigate) {
+              onNavigate('trips');
+            }
           }}
           onOpenInvite={() => {
             setShowSettingsModal(false);

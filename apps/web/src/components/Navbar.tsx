@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Bell, User as UserIcon, ChevronRight, X, Menu, ArrowRight, LogOut, LogIn } from 'lucide-react';
+import { Bell, User as UserIcon, ChevronRight, X, Menu, ArrowRight, LogOut, LogIn, Sparkles } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 interface NavbarProps {
   activePage: string;
   onNavigate: (page: string) => void;
+  onAIAssist?: () => void;
 }
 
 const navLinks = [
@@ -43,7 +44,7 @@ function LogoMark({ size = 28 }: { size?: number }) {
   );
 }
 
-export function Navbar({ activePage, onNavigate }: NavbarProps) {
+export function Navbar({ activePage, onNavigate, onAIAssist }: NavbarProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user, logout, startAuthFlow } = useAuth();
@@ -169,6 +170,24 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
               </button>
             )}
 
+            {/* AI Assist button — desktop */}
+            {onAIAssist && (
+              <button
+                id="navbar-ai-assist-btn"
+                onClick={onAIAssist}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                style={{
+                  background: 'linear-gradient(135deg, #172017, #2A3A2A)',
+                  color: '#C5D82D',
+                  border: '1.5px solid #C5D82D40',
+                  boxShadow: '0 0 12px #C5D82D30',
+                }}
+              >
+                <Sparkles size={13} />
+                <span>AI Assist</span>
+              </button>
+            )}
+
             <button
               onClick={() => onNavigate('new-trip')}
               className="btn-accent text-xs px-5 py-2.5 cursor-pointer flex items-center gap-1.5 shadow-sm"
@@ -180,6 +199,16 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
 
           {/* Mobile right */}
           <div className="md:hidden ml-auto flex items-center gap-1">
+            {onAIAssist && (
+              <button
+                onClick={onAIAssist}
+                className="flex items-center justify-center w-9 h-9 rounded-full"
+                style={{ background: '#172017', color: '#C5D82D' }}
+                title="AI Assist"
+              >
+                <Sparkles size={16} />
+              </button>
+            )}
             {user ? (
               <button
                 onClick={() => onNavigate('dashboard')}

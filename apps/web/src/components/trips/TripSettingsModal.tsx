@@ -10,10 +10,11 @@ interface TripSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onTripUpdated: () => void;
+  onTripDeleted?: () => void;
   onOpenInvite: () => void;
 }
 
-export function TripSettingsModal({ trip, isOpen, onClose, onTripUpdated, onOpenInvite }: TripSettingsModalProps) {
+export function TripSettingsModal({ trip, isOpen, onClose, onTripUpdated, onTripDeleted, onOpenInvite }: TripSettingsModalProps) {
   const { user } = useAuth();
   const [name, setName] = useState(trip.name || trip.destination);
   const [tripType, setTripType] = useState<'solo' | 'group'>(
@@ -107,7 +108,11 @@ export function TripSettingsModal({ trip, isOpen, onClose, onTripUpdated, onOpen
         const data = await res.json();
         throw new Error(data.error?.message || 'Failed to delete trip');
       }
-      onTripUpdated();
+      if (onTripDeleted) {
+        onTripDeleted();
+      } else {
+        onTripUpdated();
+      }
       onClose();
     } catch (err: any) {
       alert(err.message);

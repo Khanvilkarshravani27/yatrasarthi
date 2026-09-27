@@ -64,7 +64,7 @@ export function DependencyGraph({ nodes, edges = [], animating, tripId }: Depend
 
       {/* Dotted Container */}
       <div 
-        className="pt-12 pb-40 px-8 rounded-[20px] border border-gray-100 flex overflow-x-auto items-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        className="pt-12 pb-40 px-8 rounded-[20px] border border-[#EDE8D8] flex overflow-x-auto items-center custom-scrollbar"
         style={{ 
           backgroundColor: '#FDFDFD',
           backgroundImage: 'radial-gradient(#E2E8F0 1.5px, transparent 1.5px)',
@@ -189,6 +189,8 @@ export function DependencyGraph({ nodes, edges = [], animating, tripId }: Depend
             </React.Fragment>
           );
         })}
+        {/* Spacer for right padding on scroll */}
+        <div className="w-8 h-1 shrink-0" />
       </div>
 
       {whatIfNode && (

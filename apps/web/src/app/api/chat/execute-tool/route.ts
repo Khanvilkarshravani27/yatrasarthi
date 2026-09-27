@@ -4,10 +4,8 @@ import { publishTripEvent } from '@/lib/realtime';
 
 export async function POST(request: Request) {
   try {
-    const user = await getSessionUser(request);
-    if (!user) {
-      return NextResponse.json({ error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, { status: 401 });
-    }
+    let user: any = null;
+    try { user = await getSessionUser(request); } catch { /* guest */ }
 
     const { tripId, toolCall } = await request.json();
     if (!tripId || !toolCall) {

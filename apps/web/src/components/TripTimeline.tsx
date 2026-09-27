@@ -7,7 +7,7 @@ export function TripTimeline({ nodes, isDisrupted }: { nodes: Node[], isDisrupte
     <div className="relative">
       <div className="absolute left-[19px] top-4 bottom-0 w-0.5 bg-gray-200" />
       <div className="flex flex-col gap-0">
-        {nodes.map((node, i) => (
+        {(nodes || []).map((node, i) => (
           <div key={node.id || i} className="relative flex gap-4 pb-6">
             <div className="w-10 flex-shrink-0 flex items-start justify-center pt-1 z-10">
               <div

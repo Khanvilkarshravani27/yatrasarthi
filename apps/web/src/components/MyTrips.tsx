@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { 
-  Plus, ArrowRight, MapPin, Users, ChevronRight, 
-  AlertTriangle, Share2, Settings, ShieldAlert, Sparkles, UserPlus, Compass 
+import {
+  Plus, ArrowRight, MapPin, Users, ChevronRight,
+  AlertTriangle, Share2, Settings, ShieldAlert, Sparkles, UserPlus, Compass
 } from 'lucide-react';
 import type { TripData } from '../types';
 import { KutumbInviteModal } from './trips/KutumbInviteModal';
@@ -260,6 +260,9 @@ export function MyTrips({ trips, loading = false, onSelectTrip, onNavigate, onRe
           onTripUpdated={() => {
             if (onRefreshTrips) onRefreshTrips();
           }}
+          onTripDeleted={() => {
+            if (onRefreshTrips) onRefreshTrips();
+          }}
           onOpenInvite={() => {
             setSelectedInviteTrip(selectedSettingsTrip);
           }}
@@ -298,12 +301,12 @@ function TripCard({
     trip.status === 'healthy'
       ? 'Healthy'
       : trip.status === 'needs_attention'
-      ? 'Needs Attention'
-      : trip.status === 'unhealthy'
-      ? 'Unhealthy'
-      : trip.status === 'resolving'
-      ? 'Resolving'
-      : 'Completed';
+        ? 'Needs Attention'
+        : trip.status === 'unhealthy'
+          ? 'Unhealthy'
+          : trip.status === 'resolving'
+            ? 'Resolving'
+            : 'Completed';
   const isDisrupted = trip.status === 'needs_attention' || trip.health < 60;
   const isSolo = trip.tripType === 'solo' || (!trip.tripType && (trip.travellers?.length === 1 || trip.memberIds?.length === 1));
   const nextNode = trip.nodes?.[0];
@@ -424,8 +427,8 @@ function TripCard({
                 node.status === 'confirmed' || node.status === 'on_track'
                   ? '#4E8752'
                   : node.status === 'broken'
-                  ? '#D93829'
-                  : '#8D6E1A';
+                    ? '#D93829'
+                    : '#8D6E1A';
               return (
                 <div
                   key={node.id}
