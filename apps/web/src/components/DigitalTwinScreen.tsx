@@ -223,14 +223,14 @@ function LivingGraph({
         <svg width="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet"
           style={{ display: 'block' }}>
           <defs>
-            <marker id="arrow-ok" markerWidth={8} markerHeight={8} refX={6} refY={3} orient="auto">
-              <path d="M0,0 L0,6 L8,3 z" fill="#62A86B" />
+            <marker id="arrow-ok" markerWidth={5} markerHeight={5} refX={4} refY={2.5} orient="auto">
+              <path d="M0,0.5 L0,4.5 L4.5,2.5 z" fill="#62A86B" opacity={0.7} />
             </marker>
-            <marker id="arrow-risk" markerWidth={8} markerHeight={8} refX={6} refY={3} orient="auto">
-              <path d="M0,0 L0,6 L8,3 z" fill="#E5A43F" />
+            <marker id="arrow-risk" markerWidth={5} markerHeight={5} refX={4} refY={2.5} orient="auto">
+              <path d="M0,0.5 L0,4.5 L4.5,2.5 z" fill="#E5A43F" opacity={0.7} />
             </marker>
-            <marker id="arrow-broken" markerWidth={8} markerHeight={8} refX={6} refY={3} orient="auto">
-              <path d="M0,0 L0,6 L8,3 z" fill="#E45B4D" />
+            <marker id="arrow-broken" markerWidth={5} markerHeight={5} refX={4} refY={2.5} orient="auto">
+              <path d="M0,0.5 L0,4.5 L4.5,2.5 z" fill="#E45B4D" opacity={0.9} />
             </marker>
           </defs>
 
@@ -242,28 +242,28 @@ function LivingGraph({
             const from = positions[fromIdx];
             const to = positions[toIdx];
             const color = strainToColor(edge.strain);
-            const width = Math.max(1.5, 6 - edge.strain * 4.5);
+            
+            // Minimalistic edges: 1.5px baseline, up to 2.5px when highly strained.
+            const width = isNaN(edge.strain) ? 1.5 : 1.5 + (1 - edge.strain) * 1;
             const isBroken = edge.state === 'broken';
             const markerId = edge.state === 'broken' ? 'arrow-broken'
               : edge.state === 'at_risk' ? 'arrow-risk' : 'arrow-ok';
 
-            // Control point for curved edge
+            // Softer control point for a gentler curve
             const cx = (from.x + to.x) / 2;
-            const cy = Math.min(from.y, to.y) - 30;
+            const cy = Math.min(from.y, to.y) - 15;
 
             return (
               <g key={i}>
                 {isBroken ? (
                   <path
                     d={`M${from.x},${from.y} Q${cx},${cy} ${to.x},${to.y}`}
-                    stroke={color} strokeWidth={width} fill="none"
-                    strokeDasharray="8 5"
+                    stroke={color} strokeWidth={width + 0.5} fill="none"
+                    strokeDasharray="4 6"
                     strokeLinecap="round"
                     markerEnd={`url(#${markerId})`}
-                    style={{
-                      animation: stormValue > 0 ? 'edgeSnap 0.7s ease-out forwards' : undefined,
-                    }}
-                    opacity={0.85}
+                    style={{ animation: stormValue > 0 ? 'edgeSnap 0.7s ease-out forwards' : undefined }}
+                    opacity={0.8}
                   />
                 ) : (
                   <path
@@ -272,14 +272,14 @@ function LivingGraph({
                     strokeLinecap="round"
                     markerEnd={`url(#${markerId})`}
                     style={{ transition: 'stroke 0.4s, stroke-width 0.4s' }}
-                    opacity={0.9}
+                    opacity={0.6}
                   />
                 )}
                 {/* Buffer label on edge */}
                 {edge.bufferMin > 0 && (
                   <text
-                    x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 18}
-                    textAnchor="middle" fontSize={9} fill={color} fontWeight={700}
+                    x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 12}
+                    textAnchor="middle" fontSize={8} fill={color} fontWeight={600} opacity={0.85}
                   >
                     {edge.bufferMin}m buf
                   </text>
@@ -493,6 +493,53 @@ function MapView({
 
       markersRef.current.push(marker);
     });
+
+    // ─── Add/Update Route Line in Mapbox ───
+    const coordinates = nodesWithCoords.map(n => [n.lng, n.lat]);
+    const isDisrupted = nodes.some(n => n.status !== 'ok');
+
+    if (mapInstance.current.getSource('route')) {
+      mapInstance.current.getSource('route').setData({
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'LineString',
+          coordinates
+        }
+      });
+      
+      // Update line color based on disruption
+      if (mapInstance.current.getLayer('route')) {
+        mapInstance.current.setPaintProperty('route', 'line-color', isDisrupted ? '#E45B4D' : '#C8D8C0');
+        mapInstance.current.setPaintProperty('route', 'line-dasharray', isDisrupted ? [2, 2] : [1]);
+      }
+    } else {
+      mapInstance.current.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates
+          }
+        }
+      });
+      mapInstance.current.addLayer({
+        id: 'route',
+        type: 'line',
+        source: 'route',
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round'
+        },
+        paint: {
+          'line-color': isDisrupted ? '#E45B4D' : '#C8D8C0',
+          'line-width': 4,
+          'line-dasharray': isDisrupted ? [2, 2] : [1]
+        }
+      });
+    }
   }, [mapReady, nodes]);
 
   // Show a stylish placeholder map when Mapbox token is absent

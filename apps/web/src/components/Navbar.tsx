@@ -16,8 +16,14 @@ const navLinks = [
   { id: 'group', label: 'Group' },
   { id: 'recovery', label: 'Recovery' },
   { id: 'suraksha', label: 'Suraksha' },
-  { id: 'digital-twin', label: '⚡ Digital Twin', highlight: true },
-  { id: 'assistant', label: '🤖 Assistant', highlight: true, highlightColor: '#6D28D9' },
+  { 
+    id: 'digital-twin', label: 'Digital Twin', icon: '⚡', highlight: true, 
+    activeBg: '#172017', activeText: '#C5D82D', idleBg: '#C5D82D', idleText: '#172017', border: '#172017' 
+  },
+  { 
+    id: 'assistant', label: 'Assistant', icon: '🤖', highlight: true, 
+    activeBg: '#172017', activeText: '#A78BFA', idleBg: '#F3E8FF', idleText: '#6D28D9', border: '#D8B4FE' 
+  },
 ];
 
 
@@ -80,13 +86,15 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
                   <button
                     key={link.id}
                     onClick={() => onNavigate(link.id)}
-                    className="ml-2 px-3.5 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer"
+                    className="ml-2 px-4 py-2 text-[13px] font-bold rounded-full transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
                     style={{
-                      background: isActive ? '#172017' : (link.highlightColor ?? '#C5D82D'),
-                      color: isActive ? (link.highlightColor ?? '#C5D82D') : '#172017',
-                      border: `1.5px solid ${link.highlightColor ?? '#172017'}`,
+                      background: isActive ? link.activeBg : link.idleBg,
+                      color: isActive ? link.activeText : link.idleText,
+                      border: `1.5px solid ${isActive ? 'transparent' : link.border}`,
+                      boxShadow: isActive ? '0 4px 12px rgba(23,32,23,0.15)' : 'none'
                     }}
                   >
+                    <span>{link.icon}</span>
                     {link.label}
                   </button>
                 );
@@ -95,7 +103,7 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
                 <button
                   key={link.id}
                   onClick={() => onNavigate(link.id)}
-                  className="px-3.5 py-2 text-sm font-medium transition-all cursor-pointer relative"
+                  className="px-3.5 py-2 text-sm font-medium transition-all cursor-pointer relative whitespace-nowrap"
                   style={{
                     color: isActive ? '#172017' : '#5F665B',
                     fontWeight: isActive ? 700 : 500,
