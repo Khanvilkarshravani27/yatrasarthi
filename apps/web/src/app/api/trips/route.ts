@@ -100,7 +100,10 @@ export async function GET(request: Request) {
     const mappedTrips = await Promise.all(
       trips.map(async (t: any) => {
         const tripIdStr = t._id.toString();
-        const nodes = await db.collection('nodes').find({ tripId: tripIdStr }).toArray();
+        const [nodes, edges] = await Promise.all([
+          db.collection('nodes').find({ tripId: tripIdStr }).sort({ time: 1 }).toArray(),
+          db.collection('edges').find({ tripId: tripIdStr }).toArray(),
+        ]);
 
         // Get members info
         const memberIds: string[] = t.memberIds || [t.ownerId];
@@ -152,8 +155,8 @@ export async function GET(request: Request) {
           createdAt: t.createdAt || new Date().toISOString(),
           updatedAt: t.updatedAt || new Date().toISOString(),
           version: t.version || 1,
-          nodes: nodes.map((n: any) => ({ id: n._id.toString(), ...n })),
-          edges: [],
+          nodes: nodes.map((n: any) => ({ ...n, id: n._id.toString() })),
+          edges: edges.map((e: any) => ({ ...e, id: e._id?.toString(), fromNodeId: e.fromNodeId, toNodeId: e.toNodeId, bufferMin: e.bufferMin ?? 60, paddingMin: e.paddingMin ?? 0, constraint: e.constraint ?? 'soft' })),
           travellers,
           actions: [],
           eventLog: [],

@@ -726,30 +726,51 @@ export function DigitalTwinScreen({ trip, allTrips, onSelectTrip }: DigitalTwinS
       return;
     }
 
-    const nodes: SimNodeResult[] = trip.nodes.map((n: any) => ({
-      id: n.id ?? n._id?.toString() ?? '',
-      label: n.label ?? n.type ?? 'Node',
-      type: n.type ?? 'phantom',
-      status: 'ok',
-      addedDelayMin: 0,
-      strain: 0,
-      confidencePct: 95,
-      lat: n.lat,
-      lng: n.lng,
-    }));
+    const nodes: SimNodeResult[] = trip.nodes.map((n: any) => {
+      // Normalise: prefer the string id field, fall back to _id
+      const id = (n.id && n.id !== '[object Object]') ? n.id : (n._id?.toString?.() ?? String(n._id ?? Math.random()));
+      return {
+        id,
+        label: n.label ?? n.type ?? 'Node',
+        type: n.type ?? 'phantom',
+        status: (n.status === 'broken' || n.status === 'disrupted') ? 'at_risk' : 'ok',
+        addedDelayMin: 0,
+        strain: 0,
+        confidencePct: 95,
+        lat: n.lat,
+        lng: n.lng,
+      };
+    });
 
-    const edges: SimEdgeResult[] = (trip.edges ?? []).map((e: any) => ({
-      from: e.fromNodeId ?? e.from ?? '',
-      to: e.toNodeId ?? e.to ?? '',
-      state: 'ok' as const,
-      strain: 0,
-      bufferMin: e.bufferMin ?? 60,
-    }));
+    const nodeIdSet = new Set(nodes.map(n => n.id));
+
+    // Build edges from trip.edges — normalise IDs to match what we just built
+    let edges: SimEdgeResult[] = (trip.edges ?? [])
+      .map((e: any) => ({
+        from: e.fromNodeId ?? e.from ?? '',
+        to: e.toNodeId ?? e.to ?? '',
+        state: 'ok' as const,
+        strain: 0,
+        bufferMin: e.bufferMin ?? 60,
+      }))
+      .filter((e: SimEdgeResult) => nodeIdSet.has(e.from) && nodeIdSet.has(e.to));
+
+    // Fallback: if no valid edges exist, infer sequential connections from node order
+    if (edges.length === 0 && nodes.length > 1) {
+      edges = nodes.slice(0, -1).map((n, i) => ({
+        from: n.id,
+        to: nodes[i + 1].id,
+        state: 'ok' as const,
+        strain: 0,
+        bufferMin: 60,
+      }));
+    }
 
     setSimNodes(nodes);
     setSimEdges(edges);
     setLogEntries([]);
   }, [trip]);
+
 
   useEffect(() => { buildBaseState(); }, [buildBaseState]);
 
@@ -809,16 +830,29 @@ export function DigitalTwinScreen({ trip, allTrips, onSelectTrip }: DigitalTwinS
 
     const nodes = trip.nodes.map((n: any) => ({
       ...n,
-      id: n.id ?? n._id?.toString() ?? '',
+      id: (n.id && n.id !== '[object Object]') ? n.id : (n._id?.toString?.() ?? String(n._id ?? '')),
     }));
-    const edges = (trip.edges ?? []).map((e: any) => ({
-      ...e,
-      from: e.fromNodeId ?? e.from ?? '',
-      to: e.toNodeId ?? e.to ?? '',
-      bufferMin: e.bufferMin ?? 60,
-      paddingMin: e.paddingMin ?? 0,
-      constraint: e.constraint ?? 'soft',
-    }));
+
+    const nodeIdSet = new Set(nodes.map((n: any) => n.id as string));
+
+    let edges = (trip.edges ?? [])
+      .map((e: any) => ({
+        ...e,
+        from: e.fromNodeId ?? e.from ?? '',
+        to: e.toNodeId ?? e.to ?? '',
+        bufferMin: e.bufferMin ?? 60,
+        paddingMin: e.paddingMin ?? 0,
+        constraint: e.constraint ?? 'soft',
+      }))
+      .filter((e: any) => nodeIdSet.has(e.from) && nodeIdSet.has(e.to));
+
+    // Fallback: infer sequential edges from node order when none exist in DB
+    if (edges.length === 0 && nodes.length > 1) {
+      edges = nodes.slice(0, -1).map((n: any, i: number) => ({
+        from: n.id, to: nodes[i + 1].id,
+        bufferMin: 60, paddingMin: 0, constraint: 'soft',
+      }));
+    }
 
     // Build graph
     const graph = new TripGraph();
@@ -830,6 +864,7 @@ export function DigitalTwinScreen({ trip, allTrips, onSelectTrip }: DigitalTwinS
       paddingMin: e.paddingMin,
       constraint: e.constraint,
     }));
+
 
     // Compute per-node weather impact and find the worst-hit node as entry point
     const nodeImpacts = nodes.map((n: any) => {
