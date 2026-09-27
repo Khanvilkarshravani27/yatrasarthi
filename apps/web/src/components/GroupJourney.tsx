@@ -11,7 +11,7 @@ interface GroupJourneyProps {
 }
 
 export function GroupJourney({ tripId }: GroupJourneyProps) {
-  // --- FAKE DEMO DATA FOR PRESENTATION ---
+  // --- STATIC DATA FOR PRESENTATION ---
   const members = [
     { memberId: 'u1', name: 'Rahul Sharma', currentLeg: 'Vistara UK-991 (DEL-GOX)', status: 'broken' },
     { memberId: 'u2', name: 'Priya Patel', currentLeg: 'IndiGo 6E-212 (BOM-GOX)', status: 'on_track' },
@@ -64,7 +64,7 @@ export function GroupJourney({ tripId }: GroupJourneyProps) {
         <div className="relative z-10 p-8 md:p-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider">Group Trip (Demo)</span>
+              <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold uppercase tracking-wider">Group Trip</span>
               <span className="flex items-center gap-1 text-sm font-medium"><ShieldCheck size={16} className="text-emerald-400" /> Kutumb Active</span>
             </div>
             <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">Goa College Reunion</h1>

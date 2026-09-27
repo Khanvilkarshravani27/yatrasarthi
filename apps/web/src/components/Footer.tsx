@@ -80,7 +80,7 @@ export function Footer({ onNavigate }: FooterProps) {
 
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-xs" style={{ color: '#6F756C' }}>
-            © 2024 YatraSarthi. Prototype — demo data only. Not a real travel booking service.
+            © 2024 YatraSarthi. All rights reserved.
           </p>
           <p className="text-xs" style={{ color: '#6F756C' }}>
             Travel disruption recovery platform · India

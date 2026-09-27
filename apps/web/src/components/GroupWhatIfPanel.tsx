@@ -157,7 +157,7 @@ export function GroupWhatIfPanel({ nodeId, nodeLabel, onClose }: GroupWhatIfPane
         </div>
         <div className="flex-1">
           <h3 className="font-extrabold text-xl text-gray-900 tracking-tight">What if? — {nodeLabel}</h3>
-          <p className="text-xs text-gray-400 font-medium mt-0.5">Dry-run AI simulation · Group trip demo · No real bookings modified</p>
+          <p className="text-xs text-gray-400 font-medium mt-0.5">Dry-run AI simulation · No real bookings modified</p>
         </div>
       </div>
 
