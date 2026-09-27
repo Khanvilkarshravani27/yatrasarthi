@@ -216,9 +216,22 @@ console.log('[worker] YatraSarthi worker starting...');
 schedule('Phantom Node Poller',    runPhantomPoller,        5  * 60 * 1000); // every 5 min
 schedule('Payment Timeout Sweep',  runPaymentTimeoutSweep,  10 * 60 * 1000); // every 10 min
 
+// Dummy HTTP server to satisfy Render's Web Service port binding requirement
+const http = require('http');
+const port = process.env.PORT || 3000;
+const server = http.createServer((req: any, res: any) => {
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('YatraSarthi Worker is running\n');
+});
+
+server.listen(port, () => {
+  console.log(`[worker] Health check server listening on port ${port}`);
+});
+
 // Keep the process alive
 process.on('SIGTERM', async () => {
   console.log('[worker] SIGTERM received — shutting down gracefully.');
+  server.close();
   if (client) await client.close();
   process.exit(0);
 });
