@@ -4,6 +4,13 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['@google/genai', 'openai', 'ws', 'google-auth-library'],
+  turbopack: {
+    resolveAlias: {
+      '@yatrasarthi/types': path.resolve(__dirname, '../../packages/types/src/index.ts'),
+      '@yatrasarthi/graph': path.resolve(__dirname, '../../packages/graph/src/tripGraph.ts'),
+      '@yatrasarthi/llm': path.resolve(__dirname, '../../packages/llm/src/index.ts'),
+    },
+  },
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
