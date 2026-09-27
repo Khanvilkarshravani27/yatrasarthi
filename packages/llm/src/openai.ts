@@ -93,7 +93,7 @@ Return JSON: { "subject": "...", "body": "..." }`,
     const toolCalls = choice?.message?.tool_calls;
 
     if (toolCalls && toolCalls.length > 0) {
-      const tc = toolCalls[0];
+      const tc = toolCalls[0] as any;
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(tc.function.arguments); } catch { /* empty args */ }
       return {

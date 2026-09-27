@@ -353,7 +353,7 @@ export function TripControlCenter({ trip: initialTrip, onDisrupt, onNavigate }: 
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <span className="font-semibold text-sm" style={{ color: '#172017' }}>Recent activity</span>
-                    <button onClick={() => setActiveTab('activity')} className="text-xs font-bold" style={{ color: '#172017' }}>View all</button>
+                    <button onClick={() => setActiveTab('overview')} className="text-xs font-bold" style={{ color: '#172017' }}>View all</button>
                   </div>
                   <EventTimeline events={(trip.eventLog || []).slice(0, 3)} compact />
                 </div>

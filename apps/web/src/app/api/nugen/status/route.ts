@@ -28,7 +28,7 @@ export async function GET(request: Request) {
       cache: 'no-store',
     });
 
-    let data = { status: 'UNKNOWN', model_id: null, progress: null, queue_position: null, eta_seconds: null };
+    let data: Record<string, any> = { status: 'UNKNOWN', model_id: null, progress: null, queue_position: null, eta_seconds: null };
     
     if (!res.ok) {
       // Mock for demo if API fails

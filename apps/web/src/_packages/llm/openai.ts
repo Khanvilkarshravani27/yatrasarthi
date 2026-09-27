@@ -52,7 +52,7 @@ export class OpenAIAdapter implements ExtractorProvider {
     const choice = result.choices[0];
     const toolCalls = choice?.message?.tool_calls;
     if (toolCalls && toolCalls.length > 0) {
-      const tc = toolCalls[0];
+      const tc = toolCalls[0] as any;
       let args: Record<string, unknown> = {};
       try { args = JSON.parse(tc.function.arguments); } catch { /* empty args */ }
       return { toolCall: { name: tc.function.name, arguments: args } };
