@@ -14,9 +14,10 @@ import { SurakshaPanel } from '../components/SurakshaPanel';
 import { UserDashboard } from '../components/UserDashboard';
 import { Footer } from '../components/Footer';
 import { DigitalTwinScreen } from '../components/DigitalTwinScreen';
+import { NugenPanel } from '../components/NugenPanel';
 import type { TripData } from '../types';
 
-type Page = 'home' | 'dashboard' | 'trips' | 'recovery' | 'group' | 'suraksha' | 'new-trip' | 'digital-twin';
+type Page = 'home' | 'dashboard' | 'trips' | 'recovery' | 'group' | 'suraksha' | 'new-trip' | 'digital-twin' | 'assistant';
 
 function MainApp() {
   const [page, setPage] = useState<Page>('home');
@@ -141,6 +142,12 @@ function MainApp() {
             allTrips={trips}
             onSelectTrip={handleSelectTrip}
           />
+        )}
+
+        {page === 'assistant' && (
+          <div className="max-w-4xl mx-auto px-4 pt-8 pb-16">
+            <NugenPanel />
+          </div>
         )}
 
         {page === 'new-trip' && (

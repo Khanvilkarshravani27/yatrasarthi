@@ -17,7 +17,9 @@ const navLinks = [
   { id: 'recovery', label: 'Recovery' },
   { id: 'suraksha', label: 'Suraksha' },
   { id: 'digital-twin', label: '⚡ Digital Twin', highlight: true },
+  { id: 'assistant', label: '🤖 Assistant', highlight: true, highlightColor: '#6D28D9' },
 ];
+
 
 /* SVG logo mark — Deep forest path with lime beacon */
 function LogoMark({ size = 28 }: { size?: number }) {
@@ -80,9 +82,9 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
                     onClick={() => onNavigate(link.id)}
                     className="ml-2 px-3.5 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer"
                     style={{
-                      background: isActive ? '#172017' : '#C5D82D',
-                      color: isActive ? '#C5D82D' : '#172017',
-                      border: '1.5px solid #172017',
+                      background: isActive ? '#172017' : (link.highlightColor ?? '#C5D82D'),
+                      color: isActive ? (link.highlightColor ?? '#C5D82D') : '#172017',
+                      border: `1.5px solid ${link.highlightColor ?? '#172017'}`,
                     }}
                   >
                     {link.label}
