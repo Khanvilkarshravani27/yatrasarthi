@@ -75,9 +75,10 @@ function ConfidenceBadge({ score, source }: { score: number | null; source: stri
 // ─── Pipeline Diagram ─────────────────────────────────────────────────────────
 
 function PipelineDiagram({ alignState }: { alignState: AlignmentState }) {
+  const isActive = alignState.status === 'processing' || alignState.status === 'uploading';
   const steps = [
     { label: 'Base model', sub: 'qwen-v2p5-0p5b', done: true, icon: <Bot size={12} /> },
-    { label: 'Nugen alignment', sub: 'policy corpus', done: alignState.status === 'completed', active: alignState.status === 'processing' || alignState.status === 'uploading', icon: <Zap size={12} /> },
+    { label: 'Nugen alignment', sub: alignState.alignmentId ? `…${alignState.alignmentId.slice(-8)}` : 'policy corpus', done: alignState.status === 'completed', active: isActive, icon: <Zap size={12} /> },
     { label: 'Domain model', sub: alignState.modelId ? `…${alignState.modelId.slice(-8)}` : 'pending', done: alignState.status === 'completed', icon: <Shield size={12} /> },
     { label: 'YatraSarthi', sub: 'assistant panel', done: alignState.status === 'completed', icon: <BookOpen size={12} /> },
   ];
@@ -129,8 +130,9 @@ export function NugenPanel() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [alignState, setAlignState] = useState<AlignmentState>({
-    status: 'idle',
-    alignmentId: process.env.NEXT_PUBLIC_NUGEN_ALIGNMENT_ID ?? null,
+    // Pre-seed with the running alignment — kicked off during setup
+    status: process.env.NEXT_PUBLIC_NUGEN_MODEL_ID ? 'completed' : 'processing',
+    alignmentId: process.env.NEXT_PUBLIC_NUGEN_ALIGNMENT_ID ?? 'alignment_01m3g9t1722fy86t',
     modelId: process.env.NEXT_PUBLIC_NUGEN_MODEL_ID ?? null,
     errorMsg: null,
   });
