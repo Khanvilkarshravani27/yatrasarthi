@@ -3,6 +3,7 @@ import withPWA from "@ducanh2912/next-pwa";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['@google/genai', 'openai', 'ws', 'google-auth-library'],
+  turbopack: {},
 };
 
 export default withPWA({
