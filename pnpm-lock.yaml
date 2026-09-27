@@ -93,6 +93,9 @@ importers:
       '@yatrasarthi/types':
         specifier: workspace:*
         version: link:../../packages/types
+      dotenv:
+        specifier: ^18.0.4
+        version: 18.0.4
       mongodb:
         specifier: ^7.6.0
         version: 7.6.0
@@ -2018,6 +2021,11 @@ packages:
 
   dotenv@18.0.3:
     resolution: {integrity: sha512-/8CJTyL817qPnfbQrJgOEcrU3fDrJkRIoXBE566wHuvIXKOCHUZhPqGPbCPi9SogjdGnreF0TlvnTgK6J/8zpA==}
+    engines: {node: '>=12'}
+    hasBin: true
+
+  dotenv@18.0.4:
+    resolution: {integrity: sha512-jGt9uI5BIxpVO15kvy+iEFqNAwxYClKWnkptLjSNPnFLC003Imd0ofr3aEVsbpHdSBdSsbcApNIlz4nbyGMwdA==}
     engines: {node: '>=12'}
     hasBin: true
 
@@ -6119,6 +6127,8 @@ snapshots:
       esutils: 2.0.3
 
   dotenv@18.0.3: {}
+
+  dotenv@18.0.4: {}
 
   dunder-proto@1.0.1:
     dependencies:
