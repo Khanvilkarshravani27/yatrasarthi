@@ -16,6 +16,7 @@ const navLinks = [
   { id: 'group', label: 'Group' },
   { id: 'recovery', label: 'Recovery' },
   { id: 'suraksha', label: 'Suraksha' },
+  { id: 'digital-twin', label: '⚡ Digital Twin', highlight: true },
 ];
 
 /* SVG logo mark — Deep forest path with lime beacon */
@@ -70,8 +71,24 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1 flex-1">
-            {navLinks.map(link => {
+            {navLinks.map((link: any) => {
               const isActive = activePage === link.id;
+              if (link.highlight) {
+                return (
+                  <button
+                    key={link.id}
+                    onClick={() => onNavigate(link.id)}
+                    className="ml-2 px-3.5 py-2 text-sm font-bold rounded-xl transition-all cursor-pointer"
+                    style={{
+                      background: isActive ? '#172017' : '#C5D82D',
+                      color: isActive ? '#C5D82D' : '#172017',
+                      border: '1.5px solid #172017',
+                    }}
+                  >
+                    {link.label}
+                  </button>
+                );
+              }
               return (
                 <button
                   key={link.id}
@@ -92,6 +109,7 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
                 </button>
               );
             })}
+
           </nav>
 
           {/* Right actions */}
@@ -224,24 +242,30 @@ export function Navbar({ activePage, onNavigate }: NavbarProps) {
             )}
 
             <nav className="flex flex-col gap-1 p-4 flex-1">
-              {navLinks.map(link => (
+              {(navLinks as any[]).map((link: any) => (
                 <button
                   key={link.id}
                   onClick={() => { onNavigate(link.id); setDrawerOpen(false); }}
                   className="flex items-center justify-between w-full px-4 py-3 rounded-xl text-sm font-medium text-left transition-all"
                   style={{
-                    background: activePage === link.id ? '#E8F0E2' : 'transparent',
-                    color: activePage === link.id ? '#172017' : '#5F665B',
-                    fontWeight: activePage === link.id ? 700 : 500,
+                    background: link.highlight
+                      ? (activePage === link.id ? '#172017' : '#C5D82D')
+                      : (activePage === link.id ? '#E8F0E2' : 'transparent'),
+                    color: link.highlight
+                      ? (activePage === link.id ? '#C5D82D' : '#172017')
+                      : (activePage === link.id ? '#172017' : '#5F665B'),
+                    fontWeight: activePage === link.id || link.highlight ? 700 : 500,
+                    border: link.highlight ? '1.5px solid #172017' : undefined,
                   }}
                 >
                   <span className="flex items-center gap-2">
-                    {activePage === link.id && <span className="w-1.5 h-1.5 rounded-full bg-[#C5D82D]" />}
+                    {activePage === link.id && !link.highlight && <span className="w-1.5 h-1.5 rounded-full bg-[#C5D82D]" />}
                     {link.label}
                   </span>
-                  <ChevronRight size={14} style={{ color: '#5F665B', opacity: activePage === link.id ? 1 : 0 }} />
+                  <ChevronRight size={14} style={{ color: link.highlight ? '#172017' : '#5F665B', opacity: activePage === link.id || link.highlight ? 1 : 0 }} />
                 </button>
               ))}
+
             </nav>
 
             <div className="p-4 border-t" style={{ borderColor: '#D5D9CC' }}>

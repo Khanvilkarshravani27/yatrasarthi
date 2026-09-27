@@ -13,9 +13,10 @@ import { GroupJourney } from '../components/GroupJourney';
 import { SurakshaPanel } from '../components/SurakshaPanel';
 import { UserDashboard } from '../components/UserDashboard';
 import { Footer } from '../components/Footer';
+import { DigitalTwinScreen } from '../components/DigitalTwinScreen';
 import type { TripData } from '../types';
 
-type Page = 'home' | 'dashboard' | 'trips' | 'recovery' | 'group' | 'suraksha' | 'new-trip';
+type Page = 'home' | 'dashboard' | 'trips' | 'recovery' | 'group' | 'suraksha' | 'new-trip' | 'digital-twin';
 
 function MainApp() {
   const [page, setPage] = useState<Page>('home');
@@ -133,6 +134,14 @@ function MainApp() {
         {page === 'group' && activeTrip && <GroupJourney tripId={activeTrip.id} />}
 
         {page === 'suraksha' && <SurakshaPanel trip={activeTrip} />}
+
+        {page === 'digital-twin' && (
+          <DigitalTwinScreen
+            trip={activeTrip}
+            allTrips={trips}
+            onSelectTrip={handleSelectTrip}
+          />
+        )}
 
         {page === 'new-trip' && (
           <CreateTrip

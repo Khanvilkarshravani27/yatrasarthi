@@ -295,7 +295,7 @@ export function CascadeImpactPanel({ tripId, initialResult, targetNode, onClose 
           {/* Recovery Options View */}
           {showRecovery && (
             <div className="animate-in slide-in-from-top-4 fade-in duration-500">
-              <RecoveryOptionsPanel tripId={tripId} brokenNodeId={targetNode.id} />
+              <RecoveryOptionsPanel tripId={tripId} brokenNodeId={targetNode!.id} />
             </div>
           )}
         </div>

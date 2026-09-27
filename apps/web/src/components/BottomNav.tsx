@@ -1,4 +1,5 @@
-import { Home, LayoutDashboard, RotateCcw, Users, Shield } from 'lucide-react';
+import { Home, RotateCcw, Users, Shield, Zap } from 'lucide-react';
+
 
 interface BottomNavProps {
   activePage: string;
@@ -7,11 +8,12 @@ interface BottomNavProps {
 
 const items = [
   { id: 'home', label: 'Home', icon: Home },
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'group', label: 'Group', icon: Users },
   { id: 'recovery', label: 'Recover', icon: RotateCcw },
+  { id: 'digital-twin', label: 'Twin', icon: Zap },
+  { id: 'group', label: 'Group', icon: Users },
   { id: 'suraksha', label: 'Suraksha', icon: Shield },
 ];
+
 
 export function BottomNav({ activePage, onNavigate }: BottomNavProps) {
   return (
@@ -22,6 +24,7 @@ export function BottomNav({ activePage, onNavigate }: BottomNavProps) {
       <div className="flex items-center justify-around px-2 py-2 pb-safe">
         {items.map(({ id, label, icon: Icon }) => {
           const active = activePage === id;
+          const isTwin = id === 'digital-twin';
           return (
             <button
               key={id}
@@ -31,14 +34,18 @@ export function BottomNav({ activePage, onNavigate }: BottomNavProps) {
             >
               <div
                 className="w-8 h-8 rounded-xl flex items-center justify-center transition-all"
-                style={{ background: active ? '#DCE8D2' : 'transparent' }}
+                style={{
+                  background: isTwin ? (active ? '#172017' : '#C5D82D') : (active ? '#DCE8D2' : 'transparent'),
+                }}
               >
-                <Icon size={18} strokeWidth={active ? 2.5 : 1.8} style={{ color: active ? '#172017' : '#5F665B' }} />
+                <Icon size={18} strokeWidth={active ? 2.5 : 1.8}
+                  style={{ color: isTwin ? (active ? '#C5D82D' : '#172017') : (active ? '#172017' : '#5F665B') }} />
               </div>
-              <span className="text-xs font-semibold" style={{ fontSize: 10 }}>{label}</span>
+              <span className="text-xs font-semibold" style={{ fontSize: 10, fontWeight: isTwin ? 800 : undefined }}>{label}</span>
             </button>
           );
         })}
+
       </div>
     </nav>
   );
