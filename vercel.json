@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/phantom-poller",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/payment-sweep",
+      "schedule": "*/10 * * * *"
+    }
+  ]
+}
