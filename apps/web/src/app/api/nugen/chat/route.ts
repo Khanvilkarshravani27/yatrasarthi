@@ -60,6 +60,31 @@ function getMockResponse(message: string) {
   return MOCK_QA.default;
 }
 
+const CORPUS_TEXT = `YatraSarthi Travel Policy & Passenger Rights Corpus
+SECTION 1: DGCA PASSENGER RIGHTS
+Flight Delay Compensation (DGCA CAR Section 3, Series M Part IV):
+- Delay 2-4 hours: Airlines must offer meal vouchers.
+- Delay over 4 hours: Full refund with no cancellation penalty.
+- Delay over 6 hours (8PM-3AM flights): Hotel accommodation required.
+- Weather delays: Force majeure — meal vouchers owed but no monetary compensation.
+SECTION 2: IRCTC/INDIAN RAILWAYS REFUND POLICY
+- TDR (Ticket Deposit Receipt): Filed for train delay over 3 hours. Full refund if passenger does not travel.
+- Flood/disaster delays: IRCTC grants full refund without penalty.
+SECTION 3: HOTEL CANCELLATION POLICIES
+- Free cancellation: Most hotels allow free cancellation up to 48 hours before check-in.
+- Force majeure: Hotels in disaster zones must refund or offer credit.
+SECTION 4: YATRASARTHI RECOVERY RANKING LOGIC
+1. Minimum additional cost to traveller
+2. Minimum additional time added
+3. Maximum confidence/feasibility score
+4. Preservation of trip destination
+Status meanings:
+- GREEN: Buffer intact, connection safe.
+- AMBER (at-risk): Buffer being consumed but connection still possible.
+- RED (broken): Buffer fully consumed. Connection impossible. Recovery required.
+SECTION 5: WEATHER IMPACT RULES
+Rainfall impact: 10-30mm/hr = Flight delays 30-60 min. Over 30mm/hr = Cancellations likely.`;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
@@ -70,21 +95,21 @@ export async function POST(request: Request) {
     }
 
     const apiKey = process.env.NUGEN_API_KEY;
-    // Use env model_id as fallback if not passed in body
-    const effectiveModelId = model_id || process.env.NUGEN_MODEL_ID;
+    // Use env model_id as fallback, default to glm-5p2 since it works on free tier
+    const effectiveModelId = model_id || process.env.NUGEN_MODEL_ID || 'glm-5p2';
 
-    // If no API key or no aligned model ID yet, return rich mock
-    if (!apiKey || !effectiveModelId) {
+    // If no API key, return rich mock
+    if (!apiKey) {
       const mock = getMockResponse(message);
       return NextResponse.json({
         answer: mock.answer,
         confidence_score: mock.confidence,
-        model_id: effectiveModelId ?? 'mock_yatrasarthi_policy_v1',
-        source: !apiKey ? 'mock_no_key' : 'mock_aligning',
+        model_id: effectiveModelId,
+        source: 'mock_no_key',
       });
     }
 
-    // Live Nugen inference
+    // Live Nugen inference with RAG-injected alignment
     const res = await fetch(`${NUGEN_BASE}/api/v3/inference/chat/completions`, {
       method: 'POST',
       headers: {
@@ -96,7 +121,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: 'system',
-            content: 'You are the YatraSarthi Policy & Recovery Assistant. Answer questions about passenger rights, compensation, cancellation policies, and trip recovery. Be concise and cite specific rules (DGCA, IRCTC) when relevant.',
+            content: `You are the YatraSarthi Policy & Recovery Assistant. Answer questions about passenger rights, compensation, cancellation policies, and trip recovery. Be concise and cite specific rules (DGCA, IRCTC) when relevant. Use the following context to answer:\n\n${CORPUS_TEXT}`,
           },
           { role: 'user', content: message },
         ],
